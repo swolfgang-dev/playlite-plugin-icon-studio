@@ -302,3 +302,24 @@ class ImageStudioTests(unittest.TestCase):
         self.assertEqual(studio.border_shape.currentText(), 'Circle')
         self.assertEqual(studio.border_style.currentText(), 'Gold')
         self.assertEqual(render_scene(studio.scene).pixelColor(0, 0).alpha(), 0)
+
+    def test_radius_is_editable_and_updates_follow_crop_rectangle(self):
+        studio = self.studio()
+        self.assertTrue(studio.border_radius.isEnabled())
+        studio.border_radius.setValue(100)
+        self.assertEqual(studio.scene['shape'], 'Rounded rectangle')
+        self.assertEqual(render_scene(studio.scene).pixelColor(8, 8).alpha(), 0)
+        studio.border_radius.setValue(0)
+        self.assertEqual(render_scene(studio.scene).pixelColor(8, 8).alpha(), 255)
+        studio.undo()
+        self.assertEqual(studio.border_radius.value(), 100)
+
+    def test_follow_crop_circle_radius_changes_actual_crop(self):
+        studio = self.studio()
+        studio.shape.setCurrentText('Circle')
+        self.assertTrue(studio.border_radius.isEnabled())
+        studio.border_radius.setValue(0)
+        self.assertEqual(studio.shape.currentText(), 'Rounded rectangle')
+        self.assertEqual(render_scene(studio.scene).pixelColor(8, 8).alpha(), 255)
+        studio.undo()
+        self.assertEqual(studio.shape.currentText(), 'Circle')

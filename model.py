@@ -29,7 +29,8 @@ def render_scene(scene, width=None, height=None):
     if shape == 'Circle':
         clip.addEllipse(rect)
     elif shape == 'Rounded rectangle':
-        clip.addRoundedRect(rect, min(width, height) * .12, min(width, height) * .12)
+        radius = min(scene.get('border_radius', min(output_width, output_height) * .12) * width / output_width, min(width, height) / 2)
+        clip.addRoundedRect(rect, radius, radius)
     else:
         clip.addRect(rect)
     border_path = None

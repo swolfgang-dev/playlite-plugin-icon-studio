@@ -52,17 +52,25 @@ class BorderPicker(QDialog):
         layout.addWidget(buttons)
         self.shape.currentTextChanged.connect(self.refresh)
         self.width.valueChanged.connect(self.refresh)
-        self.radius.valueChanged.connect(self.refresh)
+        self.radius.valueChanged.connect(self.change_radius)
         self.refresh()
 
     @property
     def selected(self):
         return dict(border_style=self.styles.currentItem().text(), border_shape=self.shape.currentText(),
-                    border=self.width.value(), border_radius=self.radius.value())
+                    border=self.width.value(), border_radius=self.radius.value(), shape=self.scene['shape'])
+
+    def change_radius(self, *_):
+        if self.scene['shape'] == 'Circle':
+            self.scene['shape'] = 'Rounded rectangle'
+        if self.shape.currentText() == 'Follow crop':
+            self.scene['shape'] = 'Rounded rectangle'
+        elif self.shape.currentText() in ('Circle', 'Square'):
+            self.shape.setCurrentText('Rounded square')
+        self.refresh()
 
     def refresh(self, *_):
-        self.radius.setEnabled(self.shape.currentText() == 'Rounded square' or
-                               (self.shape.currentText() == 'Follow crop' and self.scene['shape'] == 'Rounded rectangle'))
+        self.radius.setEnabled(self.shape.currentText() != 'None')
         scene = dict(self.scene, border_shape=self.shape.currentText(), border=self.width.value(),
                      border_radius=self.radius.value())
         w, h = scene['size']

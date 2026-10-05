@@ -161,7 +161,7 @@ class ImageStudio(QDialog):
         form.addRow('Border (px)', border_row)
         self.border_radius = QSpinBox()
         self.border_radius.setRange(0, 2048)
-        self.border_radius.valueChanged.connect(lambda value: self.scene_change('border_radius', value))
+        self.border_radius.valueChanged.connect(self.change_border_radius)
         form.addRow('Border radius (px)', self.border_radius)
         self.transparent_outside = QCheckBox('Transparent outside border')
         self.transparent_outside.toggled.connect(lambda value: self.scene_change('transparent_outside', value))
@@ -300,6 +300,20 @@ class ImageStudio(QDialog):
         self.scene['layers'][self.layers.row(item)]['visible'] = item.checkState() == Qt.CheckState.Checked
         self.render()
 
+    def change_border_radius(self, value):
+        if self.syncing or self.scene['border_radius'] == value:
+            return
+        self.remember()
+        self.scene['border_radius'] = value
+        if self.scene['shape'] == 'Circle':
+            self.scene['shape'] = 'Rounded rectangle'
+        if self.scene['border_shape'] == 'Follow crop':
+            self.scene['shape'] = 'Rounded rectangle'
+        elif self.scene['border_shape'] in ('Circle', 'Square'):
+            self.scene['border_shape'] = 'Rounded square'
+        self.sync_scene()
+        self.render()
+
     def choose_border(self):
         from .border_picker import BorderPicker
         picker = BorderPicker(self.scene, self)
@@ -368,8 +382,8 @@ class ImageStudio(QDialog):
         self.border_radius.setValue(self.scene.get('border_radius', 32))
         self.transparent_outside.setEnabled(has_shape)
         self.transparent_outside.setChecked(self.scene.get('transparent_outside', False))
-        rounded = self.scene.get('border_shape') == 'Rounded square' or (self.scene.get('border_shape') == 'Follow crop' and self.scene['shape'] == 'Rounded rectangle')
-        self.border_radius.setEnabled(rounded)
+        self.border_radius.setEnabled(has_shape)
+        self.border_radius.setToolTip('Corner radius in output pixels. Changing it turns circles or squares into rounded shapes.')
         source = self.scene['layers'][0]['image']
         scale = min(1, 4096 / max(source.width(), source.height()))
         original = (max(1, round(source.width() * scale)), max(1, round(source.height() * scale)))
