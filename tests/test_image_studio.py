@@ -470,7 +470,7 @@ class ImageStudioTests(unittest.TestCase):
                 self.assertEqual(scroll.verticalScrollBar().value(), before)
                 self.assertEqual(control.number.value(), control.value())
                 if value == 50:
-                    self.assertGreater(control.value(), 50)
+                    self.assertEqual(control.value(), 52)
 
     def test_source_and_overlay_controls_are_separate_and_border_toggle_preserves_design(self):
         studio = self.studio()

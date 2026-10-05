@@ -3,23 +3,28 @@ from PyQt6.QtCore import Qt, pyqtSignal, QSignalBlocker
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QSlider, QSpinBox
 
 
-class LocalWheelSlider(QSlider):
+class TwoStepWheel:
     def wheelEvent(self, event):
-        super().wheelEvent(event)
+        delta = event.angleDelta().y() or event.angleDelta().x()
+        remainder = getattr(self, '_wheel_remainder', 0) + delta
+        steps = int(remainder / 120)
+        self._wheel_remainder = remainder - steps * 120
+        if steps:
+            self.setValue(self.value() + steps * 2)
         event.accept()
 
 
-class LocalWheelSpinBox(QSpinBox):
+class LocalWheelSlider(TwoStepWheel, QSlider):
+    pass
+
+
+class LocalWheelSpinBox(TwoStepWheel, QSpinBox):
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             self.interpretText()
             event.accept()
         else:
             super().keyPressEvent(event)
-
-    def wheelEvent(self, event):
-        super().wheelEvent(event)
-        event.accept()
 
 
 class NumberSlider(QWidget):
