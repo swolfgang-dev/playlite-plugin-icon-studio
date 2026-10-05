@@ -3,9 +3,11 @@
 Edit icons, covers, headers, and backgrounds from the Images page in Add Game or
 Edit Game. Requires Playlite 0.2.40 or later, plugin API 1.
 
-The pencil button beside each image's existing controls opens the downloader on
-that image type. Choose downloaded artwork, Use current image, or Open image to
-start from a local file. Apply the selection to open Image Studio.
+The pencil button beside each image's existing controls opens Image Studio directly
+on that image. Empty image fields start with a transparent canvas. Download image…
+at the bottom right opens the downloader on the matching image type to replace
+the source. Replacement preserves the output, borders, and overlays and can be
+undone. Canceling the downloader keeps the current image.
 
 Image Studio provides output/aspect presets, custom dimensions, fill/fit cropping,
 drag-to-pan, mouse-wheel zoom, numeric zoom/pan controls, rotation, opacity,

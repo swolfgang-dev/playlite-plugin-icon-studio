@@ -342,3 +342,43 @@ class ImageStudioTests(unittest.TestCase):
         studio.scene['layers'].append(text)
         result = render_scene(studio.scene)
         self.assertTrue(any(result.pixelColor(x, y).alpha() for x in range(0, 65) for y in range(0, 30)))
+
+    def test_editor_opens_current_image_without_downloader(self):
+        editor = MetadataEditor(dict(Id='test', Name='Example'), self.root)
+        self.addCleanup(editor.reject)
+        editor.media['HeaderImage'].setText(str(self.source))
+        plugin = require_plugin('IconStudio')
+        module = importlib.import_module(plugin.__class__.__module__)
+        def inspect(studio):
+            self.assertEqual(studio.image_type, 'HeaderImage')
+            self.assertEqual(studio.scene['layers'][0]['image'].width(), 400)
+            self.assertEqual(studio.scene['layers'][0]['image'].pixelColor(0, 0).name(), '#ff0000')
+            self.assertEqual(studio.download_button.text(), 'Download image…')
+            return QDialog.DialogCode.Rejected
+        with patch.object(plugin, 'pick_image') as picker, patch.object(module, 'run_dialog', side_effect=inspect):
+            plugin.open_studio(editor, 'HeaderImage')
+            picker.assert_not_called()
+        self.assertEqual(editor.media['HeaderImage'].text(), str(self.source))
+
+    def test_download_source_preserves_overlays_and_is_undoable(self):
+        studio = self.studio()
+        overlay = image_layer(QImage(str(self.source)), 'Logo')
+        studio.scene['layers'].append(overlay)
+        studio.border_shape.setCurrentText('Circle')
+        before = studio.snapshot()
+        studio.pick_source = lambda parent: None
+        studio.download_source()
+        self.assertEqual(studio.scene, before)
+        new_source = self.root / 'replacement.png'
+        image = QImage(200, 200, QImage.Format.Format_ARGB32)
+        image.fill(QColor('lime'))
+        image.save(str(new_source))
+        studio.pick_source = lambda parent: str(new_source)
+        studio.download_button.click()
+        self.assertEqual(studio.scene['layers'][0]['image'].pixelColor(0, 0).name(), '#00ff00')
+        self.assertEqual(studio.scene['layers'][1], overlay)
+        self.assertEqual(studio.scene['border_shape'], 'Circle')
+        self.assertEqual(studio.scene['size'], before['size'])
+        studio.undo()
+        self.assertEqual(studio.scene, before)
+        self.assertEqual(self.source.read_bytes(), self.original)

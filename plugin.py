@@ -57,12 +57,11 @@ class Plugin(GenericPlugin):
 
     def open_studio(self, editor, key='Icon'):
         caches = []
-        source = self.pick_image(editor, key, caches=caches)
-        if not source:
-            return
+        source = editor.media[key].text().strip() or None
         try:
             studio = ImageStudio(source, key, editor,
-                pick_overlay=lambda parent: self.pick_image(editor, key, parent, caches, logos=True))
+                pick_overlay=lambda parent: self.pick_image(editor, key, parent, caches, logos=True),
+                pick_source=lambda parent: self.pick_image(editor, key, parent, caches))
         except ValueError as error:
             for cache in caches:
                 cache.cleanup()

@@ -69,16 +69,19 @@ class Canvas(QWidget):
 
 
 class ImageStudio(QDialog):
-    def __init__(self, source, image_type='Icon', parent=None, pick_overlay=None):
+    def __init__(self, source=None, image_type='Icon', parent=None, pick_overlay=None, pick_source=None):
         super().__init__(parent)
         self.setWindowTitle('Image Studio')
         self.resize(1150, 820)
-        image = QImage(str(source))
+        image = QImage(str(source)) if source else QImage(*PRESETS[image_type], QImage.Format.Format_ARGB32)
+        if not source:
+            image.fill(Qt.GlobalColor.transparent)
         self.scene = dict(size=PRESETS[image_type], shape='Rectangle', fit='Fill',
             background='transparent', border=0, border_color='#ffffff', border_shape='Follow crop', border_style='Solid colour', border_radius=32, transparent_outside=False,
             layers=[image_layer(image, 'Source image', True)])
         self.image_type = image_type
         self.pick_overlay = pick_overlay
+        self.pick_source = pick_source
         self.output = None
         self.cache = tempfile.TemporaryDirectory(prefix='playlite-image-studio-')
         self.undo_states, self.redo_states = [], []
@@ -219,7 +222,13 @@ class ImageStudio(QDialog):
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Apply | QDialogButtonBox.StandardButton.Cancel)
         buttons.button(QDialogButtonBox.StandardButton.Apply).clicked.connect(self.save)
         buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        footer = QHBoxLayout()
+        footer.addStretch()
+        self.download_button = QPushButton('Download image…')
+        self.download_button.clicked.connect(self.download_source)
+        footer.addWidget(self.download_button)
+        footer.addWidget(buttons)
+        layout.addLayout(footer)
         controls.activate()
         panel_width = max(370, content.minimumSizeHint().width() + scroll.verticalScrollBar().sizeHint().width() + 2 * scroll.frameWidth())
         scroll.setMinimumWidth(panel_width)
@@ -402,6 +411,24 @@ class ImageStudio(QDialog):
         color = QColorDialog.getColor(QColor(self.layer()['color']), self)
         if color.isValid():
             self.layer_change('color', color.name())
+
+    def download_source(self):
+        if self.pick_source:
+            path = self.pick_source(self)
+        else:
+            path, _ = choose_file(self, 'Source image', '', 'Images (*.png *.jpg *.jpeg *.webp *.bmp *.ico)')
+        if not path:
+            return
+        try:
+            layer = image_layer(QImage(str(path)), 'Source image', True)
+        except ValueError as error:
+            self.error.setText(str(error))
+            return
+        self.remember()
+        self.scene['layers'][0] = layer
+        self.error.clear()
+        self.sync_scene()
+        self.render()
 
     def add_image(self):
         if self.pick_overlay:
