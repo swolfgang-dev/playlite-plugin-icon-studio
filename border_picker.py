@@ -25,13 +25,16 @@ class BorderPicker(QDialog):
         self.shape = QComboBox()
         self.shape.addItems(SHAPES)
         self.shape.setCurrentText(scene.get('border_shape', 'Follow crop'))
+        self.size = NumberSlider()
+        self.size.setRange(1, 100)
+        self.size.setValue(scene.get('border_size', 100))
         self.width = NumberSlider()
         self.width.setRange(0, 100)
         self.width.setValue(scene['border'] or 8)
         self.radius = NumberSlider()
         self.radius.setRange(0, min(scene['size']) // 2)
         self.radius.setValue(scene.get('border_radius', 32))
-        for label, widget in [('Shape', self.shape), ('Thickness (px)', self.width), ('Radius (px)', self.radius)]:
+        for label, widget in [('Shape', self.shape), ('Border size (%)', self.size), ('Thickness (px)', self.width), ('Radius (px)', self.radius)]:
             row.addRow(label, widget)
         layout.addLayout(row)
         self.styles = QListWidget()
@@ -52,6 +55,7 @@ class BorderPicker(QDialog):
         self.styles.itemDoubleClicked.connect(lambda *_: self.accept())
         layout.addWidget(buttons)
         self.shape.currentTextChanged.connect(self.refresh)
+        self.size.valueChanged.connect(self.refresh)
         self.width.valueChanged.connect(self.refresh)
         self.radius.valueChanged.connect(self.change_radius)
         self.refresh()
@@ -59,7 +63,7 @@ class BorderPicker(QDialog):
     @property
     def selected(self):
         return dict(border_style=self.styles.currentItem().text(), border_shape=self.shape.currentText(),
-                    border=self.width.value(), border_radius=self.radius.value(), shape=self.scene['shape'])
+                    border=self.width.value(), border_size=self.size.value(), border_radius=self.radius.value(), shape=self.scene['shape'])
 
     def change_radius(self, *_):
         if self.scene['shape'] == 'Circle':
@@ -72,7 +76,7 @@ class BorderPicker(QDialog):
 
     def refresh(self, *_):
         self.radius.setEnabled(self.shape.currentText() != 'None')
-        scene = dict(self.scene, border_enabled=True, border_shape=self.shape.currentText(), border=self.width.value(),
+        scene = dict(self.scene, border_size=self.size.value(), border_enabled=True, border_shape=self.shape.currentText(), border=self.width.value(),
                      border_radius=self.radius.value())
         w, h = scene['size']
         scale = min(190 / w, 150 / h)

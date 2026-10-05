@@ -37,6 +37,36 @@ class ImageStudioTests(unittest.TestCase):
         self.addCleanup(studio.close)
         return studio
 
+    def test_image_and_border_sizes_are_independent_and_overlays_stay_put(self):
+        studio = self.studio()
+        studio.border_shape.setCurrentText('Square')
+        studio.image_size.setValue(50)
+        self.assertEqual(studio.border_size.value(), 100)
+        result = render_scene(studio.scene)
+        self.assertEqual(result.pixelColor(30, 128).alpha(), 0)
+        self.assertGreater(result.pixelColor(4, 128).green(), 200)
+        self.assertEqual(result.pixelColor(80, 128), QColor('red'))
+
+        studio.image_size.setValue(100)
+        studio.border_size.setValue(50)
+        self.assertEqual(studio.image_size.value(), 100)
+        result = render_scene(studio.scene)
+        self.assertEqual(result.pixelColor(30, 128), QColor('red'))
+        self.assertGreater(result.pixelColor(68, 128).green(), 200)
+        studio.transparent_outside.setChecked(True)
+        overlay = QImage(20, 20, QImage.Format.Format_ARGB32)
+        overlay.fill(QColor('lime'))
+        layer = image_layer(overlay, 'Overlay')
+        layer.update(x=.1, y=.1, zoom=30)
+        studio.scene['layers'].append(layer)
+        result = render_scene(studio.scene)
+        self.assertEqual(result.pixelColor(30, 128).alpha(), 0)
+        self.assertEqual(result.pixelColor(25, 25), QColor('lime'))
+        studio.border_size.setValue(75)
+        studio.undo()
+        self.assertEqual(studio.border_size.value(), 50)
+        self.assertEqual(studio.image_size.value(), 100)
+
     def test_stock_borders_preserve_canvas_and_undo(self):
         studio = self.studio('HeaderImage')
         original_size = studio.scene['size']

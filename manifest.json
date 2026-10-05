@@ -1,7 +1,7 @@
 {
   "id": "IconStudio",
   "name": "Image Studio",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "api_version": 1,
   "type": "generic",
   "enabled": true,

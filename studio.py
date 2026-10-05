@@ -78,7 +78,7 @@ class ImageStudio(QDialog):
         if not source:
             image.fill(Qt.GlobalColor.transparent)
         self.scene = dict(size=PRESETS[image_type], shape='Rectangle', fit='Fill',
-            background='transparent', border=0, border_enabled=False, border_color='#ffffff', border_shape='Follow crop', border_style='Solid colour', border_radius=0, transparent_outside=False,
+            background='transparent', image_size=100, border_size=100, border=0, border_enabled=False, border_color='#ffffff', border_shape='Follow crop', border_style='Solid colour', border_radius=0, transparent_outside=False,
             layers=[image_layer(image, 'Source image', True)])
         self.image_type = image_type
         self.pick_overlay = pick_overlay
@@ -124,7 +124,7 @@ class ImageStudio(QDialog):
 
         def transforms(form, source=False):
             result = {}
-            for name, title, low, high in [('zoom', 'Scale (%)', 10, 800), ('x', 'Position X (%)', -100, 200),
+            for name, title, low, high in [('zoom', 'Zoom (%)', 10, 800), ('x', 'Position X (%)', -100, 200),
                                           ('y', 'Position Y (%)', -100, 200), ('rotation', 'Rotation (°)', -180, 180),
                                           ('opacity', 'Opacity (%)', 0, 100)]:
                 slider = NumberSlider()
@@ -144,6 +144,10 @@ class ImageStudio(QDialog):
         self.fit.addItems(['Fill', 'Fit'])
         self.fit.currentTextChanged.connect(lambda value: self.scene_change('fit', value))
         image_form.addRow('Image sizing', self.fit)
+        self.image_size = NumberSlider()
+        self.image_size.setRange(1, 100)
+        self.image_size.valueChanged.connect(lambda value: self.scene_change('image_size', value))
+        image_form.addRow('Image size (%)', self.image_size)
         self.shape = QComboBox(self)
         self.shape.addItems(['Rectangle', 'Rounded rectangle', 'Circle'])
         self.shape.currentTextChanged.connect(lambda value: self.scene_change('shape', value))
@@ -187,6 +191,10 @@ class ImageStudio(QDialog):
         self.border_picker_button.clicked.connect(self.choose_border)
         frame_row.addWidget(self.border_picker_button)
         border_form.addRow('Style', frame_row)
+        self.border_size = NumberSlider()
+        self.border_size.setRange(1, 100)
+        self.border_size.valueChanged.connect(lambda value: self.scene_change('border_size', value))
+        border_form.addRow('Border size (%)', self.border_size)
         self.border = NumberSlider()
         self.border.setRange(0, 100)
         self.border.valueChanged.connect(lambda value: self.scene_change('border', value))
@@ -376,6 +384,9 @@ class ImageStudio(QDialog):
 
     def pan_layer(self, x, y):
         layer = self.layer()
+        if layer['base']:
+            scale = self.scene.get('image_size', 100) / 100
+            x, y = x / scale, y / scale
         layer['x'] = max(-1, min(2, layer['x'] + x))
         layer['y'] = max(-1, min(2, layer['y'] + y))
         self.sync_layer()
@@ -501,6 +512,8 @@ class ImageStudio(QDialog):
         self.shape.setCurrentText(self.scene['shape'])
         self.border_shape.setCurrentText(self.scene.get('border_shape', 'Follow crop'))
         self.border_style.setCurrentText(self.scene.get('border_style', 'Solid colour'))
+        self.image_size.setValue(self.scene.get('image_size', 100))
+        self.border_size.setValue(self.scene.get('border_size', 100))
         self.border.setValue(self.scene['border'])
         enabled = self.scene.get('border_enabled', False)
         self.enable_border.setChecked(enabled)

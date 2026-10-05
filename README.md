@@ -11,11 +11,14 @@ undone. Canceling the downloader keeps the current image.
 
 The workflow is Image → optional Border → optional Overlays → Output:
 
-- Image contains its own sizing, corner radius, scale, position, rotation, opacity,
+- Image size resizes the centered image independently of the border. Image also
+  contains corner radius, zoom, position, rotation, opacity,
   background, replacement, and reset controls. Radius zero gives square corners;
   maximum radius gives a circle on a square canvas.
 - Enable border is off initially. Enabling it reveals the visual style picker,
-  thickness, colour, and Trim image outside border. It follows the crop by default;
+  Border size, thickness, colour, and Trim image outside border. Border size
+  resizes the centered frame independently of Image size; overlays and output
+  dimensions stay unchanged. Zoom adjusts the artwork inside the image crop. It follows the crop by default;
   additional shapes are available. Silver, Gold, Dark metal, Solid colour, and None
   match the original Playnite Icon Studio vector rims. Disabling a border retains
   its settings for re-enabling and does not change the source crop.
