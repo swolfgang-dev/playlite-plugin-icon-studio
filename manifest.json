@@ -5,7 +5,7 @@
   "api_version": 1,
   "type": "generic",
   "enabled": true,
-  "repository": "swolfgang-dev/playlite-plugin-icon-studio",
+  "repository": "swolfgang-dev/playlite-plugin-image-studio",
   "minimum_playlite_version": "0.2.39",
   "description": "Crop and compose game artwork with zoom, pan, image and text overlays."
 }
