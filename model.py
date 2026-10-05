@@ -1,6 +1,6 @@
 """Image Studio's non-destructive composition and PNG rendering."""
 from PyQt6.QtCore import Qt, QRectF
-from PyQt6.QtGui import QImage, QPainter, QPainterPath, QColor, QPen, QFont, QFontMetricsF, QPainterPathStroker, QLinearGradient
+from PyQt6.QtGui import QImage, QPainter, QPainterPath, QColor, QPen, QFont, QFontMetricsF, QLinearGradient
 
 
 PRESETS = {'Icon': (256, 256), 'CoverImage': (600, 900),
@@ -60,9 +60,8 @@ def render_scene(scene, width=None, height=None):
         else:
             border_path.addRect(border_rect)
     if scene.get('transparent_outside') and border_path is not None:
-        stroke = QPainterPathStroker()
-        stroke.setWidth(thickness)
-        clip = clip.intersected(border_path.united(stroke.createStroke(border_path)))
+        # Hide the image beneath the outer half of the frame's stroke.
+        clip = clip.intersected(border_path)
     painter.setClipPath(clip)
     if scene['background'] != 'transparent':
         painter.fillRect(rect, QColor(scene['background']))

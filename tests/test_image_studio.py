@@ -235,6 +235,20 @@ class ImageStudioTests(unittest.TestCase):
         self.assertFalse(studio.transparent_outside.isChecked())
         self.assertEqual(render_scene(studio.scene).pixelColor(0, 0).alpha(), 255)
 
+    def test_trim_stops_image_at_border_center_line(self):
+        studio = self.studio()
+        studio.border_shape.setCurrentText('Square')
+        studio.transparent_outside.setChecked(True)
+        # Suppress the frame painting to inspect the image mask underneath it.
+        with patch.object(QPainter, 'drawPath'):
+            result = render_scene(studio.scene)
+        self.assertEqual(result.pixelColor(2, 128).alpha(), 0)
+        self.assertEqual(result.pixelColor(7, 128), QColor('red'))
+        studio.transparent_outside.setChecked(False)
+        with patch.object(QPainter, 'drawPath'):
+            result = render_scene(studio.scene)
+        self.assertEqual(result.pixelColor(2, 128), QColor('red'))
+
     def test_rounded_border_radius_changes_outline_and_undo_restores_it(self):
         studio = self.studio()
         studio.border_shape.setCurrentText('Rounded square')
