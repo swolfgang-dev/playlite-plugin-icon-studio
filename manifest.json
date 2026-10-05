@@ -1,12 +1,11 @@
 {
   "id": "IconStudio",
   "name": "Icon Studio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "api_version": 1,
   "type": "generic",
   "enabled": false,
   "repository": "swolfgang-dev/playlite-plugin-icon-studio",
   "minimum_playlite_version": "0.2.0",
-  "description": "Create and edit game icons. Disabled by default.",
-  "distribution_repository": "swolfgang-dev/playlite-plugin-icon-studio-releases"
+  "description": "Create and edit game icons. Disabled by default."
 }
