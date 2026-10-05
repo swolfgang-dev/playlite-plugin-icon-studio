@@ -1,6 +1,7 @@
 """Image Studio's non-destructive composition and PNG rendering."""
 from PyQt6.QtCore import Qt, QRectF
-from PyQt6.QtGui import QImage, QPainter, QPainterPath, QColor, QPen, QFont, QFontMetricsF
+from PyQt6.QtGui import QImage, QPainter, QPainterPath, QColor, QPen, QFont, QFontMetricsF, QPainterPathStroker
+
 
 PRESETS = {'Icon': (256, 256), 'CoverImage': (600, 900),
            'HeaderImage': (1920, 620), 'BackgroundImage': (1920, 1080)}
@@ -31,6 +32,29 @@ def render_scene(scene, width=None, height=None):
         clip.addRoundedRect(rect, min(width, height) * .12, min(width, height) * .12)
     else:
         clip.addRect(rect)
+    border_path = None
+    if scene['border'] or scene.get('transparent_outside'):
+        thickness = min(scene['border'] * width / output_width, min(width, height))
+        inset = thickness / 2
+        border_rect = rect.adjusted(inset, inset, -inset, -inset)
+        border_shape = scene.get('border_shape', 'Follow crop')
+        if border_shape != 'Follow crop':
+            side = min(border_rect.width(), border_rect.height())
+            border_rect = QRectF((width - side) / 2, (height - side) / 2, side, side)
+        else:
+            border_shape = shape
+        border_path = QPainterPath()
+        if border_shape == 'Circle':
+            border_path.addEllipse(border_rect)
+        elif border_shape in ('Rounded square', 'Rounded rectangle'):
+            radius = max(0, min(scene.get('border_radius', min(output_width, output_height) * .12) * width / output_width, min(width, height) / 2) - inset)
+            border_path.addRoundedRect(border_rect, radius, radius)
+        else:
+            border_path.addRect(border_rect)
+    if scene.get('transparent_outside') and border_path is not None:
+        stroke = QPainterPathStroker()
+        stroke.setWidth(thickness)
+        clip = clip.intersected(border_path.united(stroke.createStroke(border_path)))
     painter.setClipPath(clip)
     if scene['background'] != 'transparent':
         painter.fillRect(rect, QColor(scene['background']))
@@ -61,24 +85,7 @@ def render_scene(scene, width=None, height=None):
             painter.drawText(QRectF(-bounds.width() / 2 - 4, -bounds.height() / 2 - 4,
                                    bounds.width() + 8, bounds.height() + 8), Qt.AlignmentFlag.AlignCenter, layer['text'])
         painter.restore()
-    if scene['border']:
-        thickness = min(scene['border'] * width / output_width, min(width, height))
-        inset = thickness / 2
-        border_rect = rect.adjusted(inset, inset, -inset, -inset)
-        border_shape = scene.get('border_shape', 'Follow crop')
-        if border_shape != 'Follow crop':
-            side = min(border_rect.width(), border_rect.height())
-            border_rect = QRectF((width - side) / 2, (height - side) / 2, side, side)
-        else:
-            border_shape = shape
-        border_path = QPainterPath()
-        if border_shape == 'Circle':
-            border_path.addEllipse(border_rect)
-        elif border_shape in ('Rounded square', 'Rounded rectangle'):
-            radius = max(0, min(width, height) * .12 - inset)
-            border_path.addRoundedRect(border_rect, radius, radius)
-        else:
-            border_path.addRect(border_rect)
+    if scene['border'] and border_path is not None:
         painter.setPen(QPen(QColor(scene['border_color']), thickness))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawPath(border_path)

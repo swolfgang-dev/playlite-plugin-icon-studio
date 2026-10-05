@@ -191,3 +191,30 @@ class ImageStudioTests(unittest.TestCase):
             self.assertEqual(plugin.pick_image(editor, 'HeaderImage', caches=caches, logos=True), str(self.source))
         for cache in caches:
             cache.cleanup()
+
+    def test_transparent_outside_border_masks_background_and_overlays(self):
+        studio = self.studio('HeaderImage')
+        studio.border_shape.setCurrentText('Circle')
+        studio.scene_change('background', '#00ff00')
+        studio.scene['layers'].append(image_layer(QImage(str(self.source)), 'Overlay'))
+        studio.scene['layers'][-1]['zoom'] = 800
+        self.assertEqual(render_scene(studio.scene).pixelColor(0, 0).alpha(), 255)
+        studio.transparent_outside.setChecked(True)
+        result = render_scene(studio.scene)
+        self.assertEqual(result.pixelColor(0, 0).alpha(), 0)
+        self.assertEqual(result.pixelColor(960, 310).alpha(), 255)
+        studio.undo()
+        self.assertFalse(studio.transparent_outside.isChecked())
+        self.assertEqual(render_scene(studio.scene).pixelColor(0, 0).alpha(), 255)
+
+    def test_rounded_border_radius_changes_outline_and_undo_restores_it(self):
+        studio = self.studio()
+        studio.border_shape.setCurrentText('Rounded square')
+        studio.transparent_outside.setChecked(True)
+        studio.border_radius.setValue(0)
+        self.assertGreater(render_scene(studio.scene).pixelColor(8, 8).alpha(), 200)
+        studio.border_radius.setValue(100)
+        self.assertEqual(render_scene(studio.scene).pixelColor(8, 8).alpha(), 0)
+        studio.undo()
+        self.assertEqual(studio.border_radius.value(), 0)
+        self.assertGreater(render_scene(studio.scene).pixelColor(8, 8).alpha(), 200)
