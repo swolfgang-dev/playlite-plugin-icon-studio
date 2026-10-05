@@ -28,7 +28,8 @@ The workflow is Image → optional Border → optional Overlays → Output:
   text options appear only for text overlays. Foreground overlays extend beyond
   the border, up to the output edges.
 - Output provides aspect/size presets and custom dimensions. Numeric controls use
-  sliders with visible values; each drag is one undo step.
+  sliders with editable number fields; each drag is one undo step. Scrolling
+  over a slider or number adjusts that value without scrolling the settings page.
 
 Dragging or scrolling the preview edits the selected overlay, or the image when
 none is selected. The label below the preview names the active target. Adjusting

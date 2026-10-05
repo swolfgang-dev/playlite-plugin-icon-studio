@@ -418,7 +418,7 @@ class ImageStudioTests(unittest.TestCase):
         from PyQt6.QtWidgets import QSpinBox
         studio = self.studio()
         self.assertTrue(studio.shape.isHidden())
-        self.assertFalse(studio.findChildren(QSpinBox))
+        self.assertTrue(studio.findChildren(QSpinBox))
         self.assertIsInstance(studio.width_control, NumberSlider)
         studio.border_shape.setCurrentText('None')
         self.assertTrue(studio.border_radius.isEnabled())
@@ -426,7 +426,7 @@ class ImageStudioTests(unittest.TestCase):
         self.assertEqual(render_scene(studio.scene).pixelColor(8, 8).alpha(), 0)
         studio.border_radius.setValue(0)
         self.assertEqual(render_scene(studio.scene).pixelColor(8, 8).alpha(), 255)
-        self.assertEqual(studio.border_radius.label.text(), '0')
+        self.assertEqual(studio.border_radius.number.text(), '0')
         studio.begin_slider_drag()
         count = len(studio.undo_states)
         for value in (20, 40, 60):
@@ -435,6 +435,42 @@ class ImageStudioTests(unittest.TestCase):
         self.assertEqual(len(studio.undo_states), count)
         studio.undo()
         self.assertEqual(studio.border_radius.value(), 0)
+
+    def test_editable_numbers_sync_and_wheel_does_not_scroll_page(self):
+        from PyQt6.QtCore import QPointF
+        from PyQt6.QtGui import QWheelEvent
+        from PyQt6.QtWidgets import QScrollArea
+        studio = self.studio()
+        studio.show()
+        APP.processEvents()
+        control = studio.image_size
+        control.number.setFocus()
+        control.number.selectAll()
+        QTest.keyClicks(control.number, '65')
+        QTest.keyClick(control.number, Qt.Key.Key_Return)
+        self.assertEqual(control.value(), 65)
+        self.assertEqual(studio.scene['image_size'], 65)
+        studio.undo()
+        self.assertEqual(control.number.value(), 100)
+        control.setValue(50)
+        self.assertEqual(control.number.value(), 50)
+        scroll = studio.findChild(QScrollArea)
+        scroll.verticalScrollBar().setValue(10)
+        for widget in (control.slider, control.number):
+            for value in (50, 100):
+                control.setValue(value)
+                before = scroll.verticalScrollBar().value()
+                event = QWheelEvent(QPointF(widget.rect().center()),
+                                    QPointF(widget.mapToGlobal(widget.rect().center())),
+                                    QPoint(), QPoint(0, 120), Qt.MouseButton.NoButton,
+                                    Qt.KeyboardModifier.NoModifier,
+                                    Qt.ScrollPhase.NoScrollPhase, False)
+                APP.sendEvent(widget, event)
+                self.assertTrue(event.isAccepted())
+                self.assertEqual(scroll.verticalScrollBar().value(), before)
+                self.assertEqual(control.number.value(), control.value())
+                if value == 50:
+                    self.assertGreater(control.value(), 50)
 
     def test_source_and_overlay_controls_are_separate_and_border_toggle_preserves_design(self):
         studio = self.studio()
