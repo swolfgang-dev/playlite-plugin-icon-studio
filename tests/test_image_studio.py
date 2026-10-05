@@ -236,3 +236,35 @@ class ImageStudioTests(unittest.TestCase):
         studio.undo()
         self.assertEqual(studio.border_style.currentText(), 'Solid colour')
         self.assertTrue(studio.border.isEnabled())
+
+    def test_border_picker_previews_cancel_and_apply_as_one_undo_step(self):
+        from playlite_plugins.iconstudio.border_picker import BorderPicker, STYLES
+        studio = self.studio()
+        before = studio.snapshot()
+        module = importlib.import_module(ImageStudio.__module__)
+        def cancel(picker):
+            self.assertIsInstance(picker, BorderPicker)
+            self.assertEqual(picker.styles.count(), len(STYLES))
+            self.assertTrue(all(not picker.styles.item(i).icon().isNull() for i in range(len(STYLES))))
+            picker.shape.setCurrentText('Rounded square')
+            picker.width.setValue(12)
+            picker.radius.setValue(60)
+            picker.styles.setCurrentRow(STYLES.index('Gold'))
+            self.assertEqual(studio.scene, before)
+            return QDialog.DialogCode.Rejected
+        with patch.object(module, 'run_dialog', side_effect=cancel):
+            studio.choose_border()
+        self.assertEqual(studio.scene, before)
+        self.assertEqual(len(studio.undo_states), 0)
+        def apply(picker):
+            cancel(picker)
+            return QDialog.DialogCode.Accepted
+        with patch.object(module, 'run_dialog', side_effect=apply):
+            studio.choose_border()
+        self.assertEqual(studio.scene['border_style'], 'Gold')
+        self.assertEqual(studio.scene['border_shape'], 'Rounded square')
+        self.assertEqual(studio.scene['border'], 12)
+        self.assertEqual(studio.scene['border_radius'], 60)
+        self.assertEqual(len(studio.undo_states), 1)
+        studio.undo()
+        self.assertEqual(studio.scene, before)

@@ -6,7 +6,7 @@ from PyQt6.QtGui import QImage, QPainter, QColor, QPen
 from PyQt6.QtWidgets import (QDialog, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
     QCheckBox, QLabel, QSlider, QComboBox, QSpinBox, QPushButton, QDialogButtonBox, QListWidget,
     QListWidgetItem, QLineEdit, QColorDialog, QInputDialog, QScrollArea)
-from playlite.lifecycle import choose_file
+from playlite.lifecycle import choose_file, run_dialog
 from .model import PRESETS, image_layer, render_scene
 
 
@@ -144,7 +144,12 @@ class ImageStudio(QDialog):
         self.border_style = QComboBox()
         self.border_style.addItems(['Silver', 'Gold', 'Dark metal', 'Solid colour', 'None'])
         self.border_style.currentTextChanged.connect(self.set_border_style)
-        form.addRow('Frame style', self.border_style)
+        frame_row = QHBoxLayout()
+        frame_row.addWidget(self.border_style)
+        self.border_picker_button = QPushButton('Choose…')
+        self.border_picker_button.clicked.connect(self.choose_border)
+        frame_row.addWidget(self.border_picker_button)
+        form.addRow('Frame style', frame_row)
         self.border = QSpinBox()
         self.border.setRange(0, 100)
         self.border.valueChanged.connect(lambda value: self.scene_change('border', value))
@@ -289,6 +294,17 @@ class ImageStudio(QDialog):
         self.remember()
         self.scene['layers'][self.layers.row(item)]['visible'] = item.checkState() == Qt.CheckState.Checked
         self.render()
+
+    def choose_border(self):
+        from .border_picker import BorderPicker
+        picker = BorderPicker(self.scene, self)
+        if run_dialog(picker) == QDialog.DialogCode.Accepted:
+            changes = picker.selected
+            if any(self.scene.get(key) != value for key, value in changes.items()):
+                self.remember()
+                self.scene.update(changes)
+                self.sync_scene()
+                self.render()
 
     def set_border_style(self, style):
         if self.syncing:

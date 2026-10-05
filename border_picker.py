@@ -1,0 +1,82 @@
+"""Preview vector border presets on the current composition before applying."""
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor
+from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
+                            QSpinBox, QListWidget, QListWidgetItem, QDialogButtonBox)
+from .model import render_scene
+
+STYLES = ('Silver', 'Gold', 'Dark metal', 'Solid colour', 'None')
+SHAPES = ('Follow crop', 'Circle', 'Square', 'Rounded square')
+
+
+class BorderPicker(QDialog):
+    def __init__(self, scene, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle('Choose border — Image Studio')
+        self.resize(820, 570)
+        self.scene = dict(scene, layers=[dict(layer) for layer in scene['layers']])
+        layout = QVBoxLayout(self)
+        hint = QLabel('Compare borders on your image. Select a style, then Apply.')
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+        row = QHBoxLayout()
+        self.shape = QComboBox()
+        self.shape.addItems(SHAPES)
+        self.shape.setCurrentText(scene.get('border_shape', 'Follow crop'))
+        self.width = QSpinBox()
+        self.width.setRange(0, 100)
+        self.width.setValue(scene['border'] or 8)
+        self.radius = QSpinBox()
+        self.radius.setRange(0, 2048)
+        self.radius.setValue(scene.get('border_radius', 32))
+        for label, widget in [('Shape', self.shape), ('Thickness (px)', self.width), ('Radius (px)', self.radius)]:
+            row.addWidget(QLabel(label))
+            row.addWidget(widget)
+        layout.addLayout(row)
+        self.styles = QListWidget()
+        self.styles.setViewMode(QListWidget.ViewMode.IconMode)
+        self.styles.setResizeMode(QListWidget.ResizeMode.Adjust)
+        self.styles.setMovement(QListWidget.Movement.Static)
+        self.styles.setIconSize(QSize(190, 150))
+        self.styles.setGridSize(QSize(220, 190))
+        self.styles.setSpacing(8)
+        for style in STYLES:
+            self.styles.addItem(QListWidgetItem(style))
+        self.styles.setCurrentRow(STYLES.index(scene.get('border_style', 'Solid colour')))
+        layout.addWidget(self.styles, 1)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.button(QDialogButtonBox.StandardButton.Ok).setText('Apply')
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        self.styles.itemDoubleClicked.connect(lambda *_: self.accept())
+        layout.addWidget(buttons)
+        self.shape.currentTextChanged.connect(self.refresh)
+        self.width.valueChanged.connect(self.refresh)
+        self.radius.valueChanged.connect(self.refresh)
+        self.refresh()
+
+    @property
+    def selected(self):
+        return dict(border_style=self.styles.currentItem().text(), border_shape=self.shape.currentText(),
+                    border=self.width.value(), border_radius=self.radius.value())
+
+    def refresh(self, *_):
+        self.radius.setEnabled(self.shape.currentText() == 'Rounded square' or
+                               (self.shape.currentText() == 'Follow crop' and self.scene['shape'] == 'Rounded rectangle'))
+        scene = dict(self.scene, border_shape=self.shape.currentText(), border=self.width.value(),
+                     border_radius=self.radius.value())
+        w, h = scene['size']
+        scale = min(190 / w, 150 / h)
+        for index, style in enumerate(STYLES):
+            scene['border_style'] = style
+            result = render_scene(scene, max(1, round(w * scale)), max(1, round(h * scale)))
+            preview = QPixmap(190, 150)
+            preview.fill(QColor('#303030'))
+            painter = QPainter(preview)
+            for y in range(0, 150, 10):
+                for x in range(0, 190, 10):
+                    if (x // 10 + y // 10) % 2:
+                        painter.fillRect(x, y, 10, 10, QColor('#454545'))
+            painter.drawImage((190 - result.width()) // 2, (150 - result.height()) // 2, result)
+            painter.end()
+            self.styles.item(index).setIcon(QIcon(preview))
