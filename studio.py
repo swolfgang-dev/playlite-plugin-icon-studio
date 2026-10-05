@@ -78,7 +78,7 @@ class ImageStudio(QDialog):
         if not source:
             image.fill(Qt.GlobalColor.transparent)
         self.scene = dict(size=PRESETS[image_type], shape='Rectangle', fit='Fill',
-            background='transparent', image_size=100, border_size=100, border=0, border_enabled=False, border_color='#ffffff', border_shape='Follow crop', border_style='Solid colour', border_radius=0, transparent_outside=False,
+            background='transparent', image_size=100, border_size=100, border_rotation=0, border=0, border_enabled=False, border_color='#ffffff', border_shape='Follow crop', border_style='Solid colour', border_radius=0, transparent_outside=False,
             layers=[image_layer(image, 'Source image', True)])
         self.image_type = image_type
         self.pick_overlay = pick_overlay
@@ -195,6 +195,10 @@ class ImageStudio(QDialog):
         self.border_size.setRange(1, 100)
         self.border_size.valueChanged.connect(lambda value: self.scene_change('border_size', value))
         border_form.addRow('Border size (%)', self.border_size)
+        self.border_rotation = NumberSlider()
+        self.border_rotation.setRange(-180, 180)
+        self.border_rotation.valueChanged.connect(lambda value: self.scene_change('border_rotation', value))
+        border_form.addRow('Rotation (°)', self.border_rotation)
         self.border = NumberSlider()
         self.border.setRange(0, 100)
         self.border.valueChanged.connect(lambda value: self.scene_change('border', value))
@@ -514,6 +518,7 @@ class ImageStudio(QDialog):
         self.border_style.setCurrentText(self.scene.get('border_style', 'Solid colour'))
         self.image_size.setValue(self.scene.get('image_size', 100))
         self.border_size.setValue(self.scene.get('border_size', 100))
+        self.border_rotation.setValue(self.scene.get('border_rotation', 0))
         self.border.setValue(self.scene['border'])
         enabled = self.scene.get('border_enabled', False)
         self.enable_border.setChecked(enabled)

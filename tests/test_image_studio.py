@@ -235,6 +235,29 @@ class ImageStudioTests(unittest.TestCase):
         self.assertFalse(studio.transparent_outside.isChecked())
         self.assertEqual(render_scene(studio.scene).pixelColor(0, 0).alpha(), 255)
 
+    def test_border_rotation_rotates_frame_and_trim_without_rotating_image(self):
+        from playlite_plugins.iconstudio.border_picker import BorderPicker
+        studio = self.studio()
+        studio.border_shape.setCurrentText('Square')
+        studio.border_size.setValue(50)
+        studio.transparent_outside.setChecked(True)
+        before = render_scene(studio.scene)
+        studio.border_rotation.number.setValue(45)
+        rotated = render_scene(studio.scene)
+        self.assertEqual(before.pixelColor(128, 45).alpha(), 0)
+        self.assertGreater(rotated.pixelColor(128, 45).alpha(), 200)
+        self.assertEqual(rotated.pixelColor(110, 128), QColor('red'))
+        self.assertEqual(rotated.pixelColor(145, 128), QColor('blue'))
+        picker = BorderPicker(studio.scene)
+        self.addCleanup(picker.close)
+        self.assertEqual(picker.rotation.value(), 45)
+        picker.rotation.setValue(-30)
+        self.assertEqual(picker.selected['border_rotation'], -30)
+        self.assertEqual(studio.scene['border_rotation'], 45)
+        studio.undo()
+        self.assertEqual(studio.border_rotation.value(), 0)
+        self.assertEqual(render_scene(studio.scene), before)
+
     def test_trim_stops_image_at_border_center_line(self):
         studio = self.studio()
         studio.border_shape.setCurrentText('Square')

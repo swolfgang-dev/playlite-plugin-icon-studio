@@ -17,7 +17,8 @@ The workflow is Image → optional Border → optional Overlays → Output:
   maximum radius gives a circle on a square canvas.
 - Enable border is off initially. Enabling it reveals the visual style picker,
   Border size, thickness, colour, and Trim image outside border (clips at the frame’s centre line). Border size
-  resizes the centered frame independently of Image size; overlays and output
+  resizes the centered frame independently of Image size; rotation turns only
+  the frame and its trim mask around the canvas centre; overlays and output
   dimensions stay unchanged. Zoom adjusts the artwork inside the image crop. It follows the crop by default;
   additional shapes are available. Silver, Gold, Dark metal, Solid colour, and None
   match the original Playnite Icon Studio vector rims. Disabling a border retains

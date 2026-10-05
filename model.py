@@ -1,6 +1,6 @@
 """Image Studio's non-destructive composition and PNG rendering."""
 from PyQt6.QtCore import Qt, QRectF
-from PyQt6.QtGui import QImage, QPainter, QPainterPath, QColor, QPen, QFont, QFontMetricsF, QLinearGradient
+from PyQt6.QtGui import QImage, QPainter, QPainterPath, QColor, QPen, QFont, QFontMetricsF, QLinearGradient, QTransform
 
 
 PRESETS = {'Icon': (256, 256), 'CoverImage': (600, 900),
@@ -36,6 +36,10 @@ def render_scene(scene, width=None, height=None):
         clip.addRoundedRect(rect, radius, radius)
     else:
         clip.addRect(rect)
+    border_transform = QTransform()
+    border_transform.translate(width / 2, height / 2)
+    border_transform.rotate(scene.get('border_rotation', 0))
+    border_transform.translate(-width / 2, -height / 2)
     border_path = None
     has_border_shape = scene.get('border_enabled', True) and scene.get('border_shape') != 'None'
     style = scene.get('border_style', 'Solid colour')
@@ -59,6 +63,7 @@ def render_scene(scene, width=None, height=None):
             border_path.addRoundedRect(border_rect, radius, radius)
         else:
             border_path.addRect(border_rect)
+        border_path = border_transform.map(border_path)
     if scene.get('transparent_outside') and border_path is not None:
         # Hide the image beneath the outer half of the frame's stroke.
         clip = clip.intersected(border_path)
@@ -105,7 +110,7 @@ def render_scene(scene, width=None, height=None):
             light, mid = {'Silver': ('#ffffff', '#808080'),
                           'Gold': ('#fafad2', '#daa520'),
                           'Dark metal': ('#808080', '#373737')}[style]
-            brush = QLinearGradient(border_rect.topLeft(), border_rect.bottomRight())
+            brush = QLinearGradient(border_transform.map(border_rect.topLeft()), border_transform.map(border_rect.bottomRight()))
             for position, color in ((0, light), (.35, mid), (.6, '#000000'), (1, light)):
                 brush.setColorAt(position, QColor(color))
         painter.setBrush(Qt.BrushStyle.NoBrush)
