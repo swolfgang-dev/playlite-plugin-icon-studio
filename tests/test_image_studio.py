@@ -192,12 +192,10 @@ class ImageStudioTests(unittest.TestCase):
         for cache in caches:
             cache.cleanup()
 
-    def test_transparent_outside_border_masks_background_and_overlays(self):
+    def test_transparent_outside_border_masks_background_and_source(self):
         studio = self.studio('HeaderImage')
         studio.border_shape.setCurrentText('Circle')
         studio.scene_change('background', '#00ff00')
-        studio.scene['layers'].append(image_layer(QImage(str(self.source)), 'Overlay'))
-        studio.scene['layers'][-1]['zoom'] = 800
         self.assertEqual(render_scene(studio.scene).pixelColor(0, 0).alpha(), 255)
         studio.transparent_outside.setChecked(True)
         result = render_scene(studio.scene)
@@ -323,3 +321,24 @@ class ImageStudioTests(unittest.TestCase):
         self.assertEqual(render_scene(studio.scene).pixelColor(8, 8).alpha(), 255)
         studio.undo()
         self.assertEqual(studio.shape.currentText(), 'Circle')
+
+    def test_image_and_text_overlays_escape_crop_and_border(self):
+        studio = self.studio()
+        studio.shape.setCurrentText('Circle')
+        studio.border_shape.setCurrentText('Circle')
+        studio.transparent_outside.setChecked(True)
+        overlay = QImage(40, 40, QImage.Format.Format_ARGB32)
+        overlay.fill(QColor('lime'))
+        image = image_layer(overlay, 'Logo')
+        image.update(x=.08, y=.08)
+        studio.scene['layers'].append(image)
+        result = render_scene(studio.scene)
+        self.assertEqual(result.pixelColor(20, 20).name(), '#00ff00')
+        self.assertEqual(result.pixelColor(250, 250).alpha(), 0)
+        image.update(x=.5, y=.02)
+        self.assertEqual(render_scene(studio.scene).pixelColor(128, 5).name(), '#00ff00')
+        image['visible'] = False
+        text = dict(image, image=None, text='TEXT', x=.18, y=.09, visible=True, color='#ffffff', text_size=30)
+        studio.scene['layers'].append(text)
+        result = render_scene(studio.scene)
+        self.assertTrue(any(result.pixelColor(x, y).alpha() for x in range(0, 65) for y in range(0, 30)))

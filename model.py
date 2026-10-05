@@ -63,9 +63,9 @@ def render_scene(scene, width=None, height=None):
     painter.setClipPath(clip)
     if scene['background'] != 'transparent':
         painter.fillRect(rect, QColor(scene['background']))
-    for layer in scene['layers']:
+    def draw_layer(layer):
         if not layer['visible']:
-            continue
+            return
         painter.save()
         painter.setOpacity(layer['opacity'] / 100)
         painter.translate(layer['x'] * width, layer['y'] * height)
@@ -90,6 +90,9 @@ def render_scene(scene, width=None, height=None):
             painter.drawText(QRectF(-bounds.width() / 2 - 4, -bounds.height() / 2 - 4,
                                    bounds.width() + 8, bounds.height() + 8), Qt.AlignmentFlag.AlignCenter, layer['text'])
         painter.restore()
+    for layer in scene['layers']:
+        if layer['base']:
+            draw_layer(layer)
     if border_width and border_path is not None:
         brush = QColor(scene['border_color'])
         if style in ('Silver', 'Gold', 'Dark metal'):
@@ -105,5 +108,10 @@ def render_scene(scene, width=None, height=None):
         painter.setPen(QPen(brush, min(border_width, thickness)))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawPath(border_path)
+    # Foreground overlays sit above the frame and are bounded only by the canvas.
+    painter.setClipping(False)
+    for layer in scene['layers']:
+        if not layer['base']:
+            draw_layer(layer)
     painter.end()
     return image

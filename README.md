@@ -21,8 +21,9 @@ each style on your current composition. Adjust shape, thickness, and radius ther
 Apply commits the selection in one undo step, and Cancel leaves it unchanged. Borders can also follow the crop. Border radius (px) is available for every active border. Changing it converts
 circles and squares to adjustable rounded shapes; Follow crop updates the crop
 itself. Zero gives square corners, and larger values round them.
-Transparent outside border removes exterior pixels from the entire composition,
-including background and overlays, while preserving the frame and its interior.
+Transparent outside border removes exterior pixels from the source image and
+background. Image and text overlays are drawn above the frame and can extend
+beyond it, up to the output canvas edges.
 The blue frame shows exactly what will be exported.
 
 Apply renders a PNG into a temporary folder and fills only the target image field.
