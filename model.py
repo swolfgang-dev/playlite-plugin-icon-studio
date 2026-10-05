@@ -62,8 +62,25 @@ def render_scene(scene, width=None, height=None):
                                    bounds.width() + 8, bounds.height() + 8), Qt.AlignmentFlag.AlignCenter, layer['text'])
         painter.restore()
     if scene['border']:
-        painter.setPen(QPen(QColor(scene['border_color']), scene['border'] * width / output_width))
+        thickness = min(scene['border'] * width / output_width, min(width, height))
+        inset = thickness / 2
+        border_rect = rect.adjusted(inset, inset, -inset, -inset)
+        border_shape = scene.get('border_shape', 'Follow crop')
+        if border_shape != 'Follow crop':
+            side = min(border_rect.width(), border_rect.height())
+            border_rect = QRectF((width - side) / 2, (height - side) / 2, side, side)
+        else:
+            border_shape = shape
+        border_path = QPainterPath()
+        if border_shape == 'Circle':
+            border_path.addEllipse(border_rect)
+        elif border_shape in ('Rounded square', 'Rounded rectangle'):
+            radius = max(0, min(width, height) * .12 - inset)
+            border_path.addRoundedRect(border_rect, radius, radius)
+        else:
+            border_path.addRect(border_rect)
+        painter.setPen(QPen(QColor(scene['border_color']), thickness))
         painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawPath(clip)
+        painter.drawPath(border_path)
     painter.end()
     return image

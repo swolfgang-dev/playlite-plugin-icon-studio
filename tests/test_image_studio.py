@@ -37,6 +37,23 @@ class ImageStudioTests(unittest.TestCase):
         self.addCleanup(studio.close)
         return studio
 
+    def test_stock_borders_preserve_canvas_and_undo(self):
+        studio = self.studio('HeaderImage')
+        original_size = studio.scene['size']
+        for shape in ('Circle', 'Square', 'Rounded square'):
+            studio.border_shape.setCurrentText(shape)
+            self.assertEqual(studio.scene['size'], original_size)
+            self.assertEqual(studio.scene['border'], 8)
+            result = render_scene(studio.scene, 960, 310)
+            self.assertEqual((result.width(), result.height()), (960, 310))
+            self.assertGreater(result.pixelColor(480, 2).green(), 150)
+        studio.undo()
+        self.assertEqual(studio.border_shape.currentText(), 'Square')
+        studio.undo()
+        studio.undo()
+        self.assertEqual(studio.border_shape.currentText(), 'Follow crop')
+        self.assertEqual(studio.border.value(), 0)
+
     def test_all_image_types_export_expected_dimensions_and_leave_source_untouched(self):
         for kind, size in PRESETS.items():
             studio = self.studio(kind)

@@ -75,7 +75,7 @@ class ImageStudio(QDialog):
         self.resize(1150, 820)
         image = QImage(str(source))
         self.scene = dict(size=PRESETS[image_type], shape='Rectangle', fit='Fill',
-            background='transparent', border=0, border_color='#ffffff',
+            background='transparent', border=0, border_color='#ffffff', border_shape='Follow crop',
             layers=[image_layer(image, 'Source image', True)])
         self.image_type = image_type
         self.pick_overlay = pick_overlay
@@ -137,6 +137,10 @@ class ImageStudio(QDialog):
         colors.addWidget(background)
         colors.addWidget(clear)
         form.addRow(colors)
+        self.border_shape = QComboBox()
+        self.border_shape.addItems(['Follow crop', 'Circle', 'Square', 'Rounded square'])
+        self.border_shape.currentTextChanged.connect(self.set_border_shape)
+        form.addRow('Stock border', self.border_shape)
         self.border = QSpinBox()
         self.border.setRange(0, 100)
         self.border.valueChanged.connect(lambda value: self.scene_change('border', value))
@@ -273,6 +277,16 @@ class ImageStudio(QDialog):
         self.scene['layers'][self.layers.row(item)]['visible'] = item.checkState() == Qt.CheckState.Checked
         self.render()
 
+    def set_border_shape(self, shape):
+        if self.syncing:
+            return
+        self.remember()
+        self.scene['border_shape'] = shape
+        if shape != 'Follow crop' and not self.scene['border']:
+            self.scene['border'] = 8
+        self.sync_scene()
+        self.render()
+
     def set_preset(self, index):
         if self.syncing or index == 5:
             return
@@ -300,6 +314,7 @@ class ImageStudio(QDialog):
         self.height_control.setValue(self.scene['size'][1])
         self.fit.setCurrentText(self.scene['fit'])
         self.shape.setCurrentText(self.scene['shape'])
+        self.border_shape.setCurrentText(self.scene.get('border_shape', 'Follow crop'))
         self.border.setValue(self.scene['border'])
         source = self.scene['layers'][0]['image']
         scale = min(1, 4096 / max(source.width(), source.height()))
