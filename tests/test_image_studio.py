@@ -218,3 +218,21 @@ class ImageStudioTests(unittest.TestCase):
         studio.undo()
         self.assertEqual(studio.border_radius.value(), 0)
         self.assertGreater(render_scene(studio.scene).pixelColor(8, 8).alpha(), 200)
+
+    def test_playnite_frame_styles_render_distinct_gradients_and_none(self):
+        studio = self.studio()
+        studio.border_shape.setCurrentText('Square')
+        pixels = {}
+        for style in ('Silver', 'Gold', 'Dark metal', 'Solid colour'):
+            studio.border_style.setCurrentText(style)
+            pixels[style] = render_scene(studio.scene).pixelColor(128, 5)
+            self.assertEqual(studio.border_color_button.isEnabled(), style == 'Solid colour')
+        self.assertGreater(pixels['Gold'].red(), pixels['Gold'].blue())
+        self.assertGreater(pixels['Silver'].red(), pixels['Dark metal'].red())
+        self.assertEqual(pixels['Solid colour'].name(), '#ffffff')
+        studio.border_style.setCurrentText('None')
+        self.assertFalse(studio.border.isEnabled())
+        self.assertEqual(render_scene(studio.scene).pixelColor(128, 5).green(), 0)
+        studio.undo()
+        self.assertEqual(studio.border_style.currentText(), 'Solid colour')
+        self.assertTrue(studio.border.isEnabled())

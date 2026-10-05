@@ -1,6 +1,6 @@
 """Image Studio's non-destructive composition and PNG rendering."""
 from PyQt6.QtCore import Qt, QRectF
-from PyQt6.QtGui import QImage, QPainter, QPainterPath, QColor, QPen, QFont, QFontMetricsF, QPainterPathStroker
+from PyQt6.QtGui import QImage, QPainter, QPainterPath, QColor, QPen, QFont, QFontMetricsF, QPainterPathStroker, QLinearGradient
 
 
 PRESETS = {'Icon': (256, 256), 'CoverImage': (600, 900),
@@ -33,8 +33,11 @@ def render_scene(scene, width=None, height=None):
     else:
         clip.addRect(rect)
     border_path = None
+    style = scene.get('border_style', 'Solid colour')
+    border_width = scene['border'] * width / output_width if style != 'None' else 0
+    rim_width = border_width + 3 * width / output_width if border_width else 0
     if scene['border'] or scene.get('transparent_outside'):
-        thickness = min(scene['border'] * width / output_width, min(width, height))
+        thickness = min(rim_width, min(width, height))
         inset = thickness / 2
         border_rect = rect.adjusted(inset, inset, -inset, -inset)
         border_shape = scene.get('border_shape', 'Follow crop')
@@ -85,8 +88,19 @@ def render_scene(scene, width=None, height=None):
             painter.drawText(QRectF(-bounds.width() / 2 - 4, -bounds.height() / 2 - 4,
                                    bounds.width() + 8, bounds.height() + 8), Qt.AlignmentFlag.AlignCenter, layer['text'])
         painter.restore()
-    if scene['border'] and border_path is not None:
-        painter.setPen(QPen(QColor(scene['border_color']), thickness))
+    if border_width and border_path is not None:
+        brush = QColor(scene['border_color'])
+        if style in ('Silver', 'Gold', 'Dark metal'):
+            light, mid = {'Silver': ('#ffffff', '#808080'),
+                          'Gold': ('#fafad2', '#daa520'),
+                          'Dark metal': ('#808080', '#373737')}[style]
+            brush = QLinearGradient(border_rect.topLeft(), border_rect.bottomRight())
+            for position, color in ((0, light), (.35, mid), (.6, '#000000'), (1, light)):
+                brush.setColorAt(position, QColor(color))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setPen(QPen(QColor('black'), thickness))
+        painter.drawPath(border_path)
+        painter.setPen(QPen(brush, min(border_width, thickness)))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawPath(border_path)
     painter.end()

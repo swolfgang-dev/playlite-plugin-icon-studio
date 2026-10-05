@@ -75,7 +75,7 @@ class ImageStudio(QDialog):
         self.resize(1150, 820)
         image = QImage(str(source))
         self.scene = dict(size=PRESETS[image_type], shape='Rectangle', fit='Fill',
-            background='transparent', border=0, border_color='#ffffff', border_shape='Follow crop', border_radius=32, transparent_outside=False,
+            background='transparent', border=0, border_color='#ffffff', border_shape='Follow crop', border_style='Solid colour', border_radius=32, transparent_outside=False,
             layers=[image_layer(image, 'Source image', True)])
         self.image_type = image_type
         self.pick_overlay = pick_overlay
@@ -141,6 +141,10 @@ class ImageStudio(QDialog):
         self.border_shape.addItems(['Follow crop', 'Circle', 'Square', 'Rounded square'])
         self.border_shape.currentTextChanged.connect(self.set_border_shape)
         form.addRow('Stock border', self.border_shape)
+        self.border_style = QComboBox()
+        self.border_style.addItems(['Silver', 'Gold', 'Dark metal', 'Solid colour', 'None'])
+        self.border_style.currentTextChanged.connect(self.set_border_style)
+        form.addRow('Frame style', self.border_style)
         self.border = QSpinBox()
         self.border.setRange(0, 100)
         self.border.valueChanged.connect(lambda value: self.scene_change('border', value))
@@ -286,6 +290,16 @@ class ImageStudio(QDialog):
         self.scene['layers'][self.layers.row(item)]['visible'] = item.checkState() == Qt.CheckState.Checked
         self.render()
 
+    def set_border_style(self, style):
+        if self.syncing:
+            return
+        self.remember()
+        self.scene['border_style'] = style
+        if style != 'None' and not self.scene['border']:
+            self.scene['border'] = 8
+        self.sync_scene()
+        self.render()
+
     def set_border_shape(self, shape):
         if self.syncing:
             return
@@ -324,7 +338,10 @@ class ImageStudio(QDialog):
         self.fit.setCurrentText(self.scene['fit'])
         self.shape.setCurrentText(self.scene['shape'])
         self.border_shape.setCurrentText(self.scene.get('border_shape', 'Follow crop'))
+        self.border_style.setCurrentText(self.scene.get('border_style', 'Solid colour'))
         self.border.setValue(self.scene['border'])
+        self.border.setEnabled(self.scene.get('border_style') != 'None')
+        self.border_color_button.setEnabled(self.scene.get('border_style') == 'Solid colour')
         self.border_radius.setValue(self.scene.get('border_radius', 32))
         self.transparent_outside.setChecked(self.scene.get('transparent_outside', False))
         rounded = self.scene.get('border_shape') == 'Rounded square' or (self.scene.get('border_shape') == 'Follow crop' and self.scene['shape'] == 'Rounded rectangle')

@@ -13,7 +13,10 @@ transparent or colored backgrounds, crop shapes, and borders. Add image or text
 overlays (Add image opens the downloader’s Logos tab by default), select a layer to transform it, reorder/hide/remove overlays, or undo and
 redo changes. Stock circle, square, and rounded-square borders fit inside the
 canvas without changing its dimensions. Selecting a stock shape enables an 8px
-border; adjust its thickness and color as needed. Borders can also follow the crop. Border radius (px) adjusts rounded corners;
+border; adjust its thickness and color as needed. Frame styles match the original
+Playnite Icon Studio: Silver, Gold, Dark metal, Solid colour, and None, with the
+same diagonal metallic gradients and black rim. These are vector presets and
+remain sharp at any export size. Borders can also follow the crop. Border radius (px) adjusts rounded corners;
 Transparent outside border removes exterior pixels from the entire composition,
 including background and overlays, while preserving the frame and its interior.
 The blue frame shows exactly what will be exported.
