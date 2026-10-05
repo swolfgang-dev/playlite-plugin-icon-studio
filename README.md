@@ -52,3 +52,20 @@ Playlite if needed.
 Build locally with `python3 tools/build_release.py`. CI installs the core and
 isolated plugin fixtures, runs tests, and publishes `plugin.zip` and `SHA256SUMS`
 from version tags.
+
+Border patterns include Single rim, Double rim, Raised bevel, Recessed bevel,
+Glow, Dashed, Dotted, and Corner brackets. Choose a shape independently of the
+pattern and finish. Chrome and Brushed metal join the original metallic finishes.
+The controls show rim gap for Double rim, spacing for Dashed/Dotted, glow spread
+for Glow, and corner length for Corner brackets. Solid borders have a base colour;
+metallic finishes have highlight, midtone, and shadow colours; bevels have highlight
+and shadow. Glow has its own colour, and all patterns have an outer rim colour.
+Reset finish colours restores the selected finish's defaults. Borders remain
+vectors and rotate together with their trim mask; overlays stay above them.
+
+Save… under Border creates a named preset. Select a saved preset to apply it in
+one undo step. Saving an existing name asks before replacing it; Delete removes
+only the preset. Presets persist between sessions in
+`image-studio-border-presets.json` in Playlite's data folder. They contain border
+settings, including the shared corner radius and trim option, without image files,
+layers, or output dimensions. Applying a preset does not move or replace images.

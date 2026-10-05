@@ -32,7 +32,7 @@ class ImageStudioTests(unittest.TestCase):
         self.original = self.source.read_bytes()
 
     def studio(self, kind='Icon'):
-        studio = ImageStudio(self.source, kind)
+        studio = ImageStudio(self.source, kind, presets_path=self.root / 'border-presets.json')
         self.addCleanup(studio.cache.cleanup)
         self.addCleanup(studio.close)
         return studio
@@ -257,6 +257,71 @@ class ImageStudioTests(unittest.TestCase):
         studio.undo()
         self.assertEqual(studio.border_rotation.value(), 0)
         self.assertEqual(render_scene(studio.scene), before)
+
+    def test_border_patterns_finishes_and_relevant_controls(self):
+        from playlite_plugins.iconstudio.borders import PATTERNS
+        studio = self.studio()
+        studio.border_shape.setCurrentText('Square')
+        studio.border_size.setValue(70)
+        studio.border.setValue(18)
+        renders = []
+        for pattern in PATTERNS:
+            studio.border_pattern.setCurrentText(pattern)
+            renders.append(render_scene(studio.scene))
+            visible = {key for key, (_, control) in studio.border_parameters.items() if not control.isHidden()}
+            expected = {'Double rim': {'border_gap'}, 'Dashed': {'border_spacing'},
+                        'Dotted': {'border_spacing'}, 'Glow': {'border_glow'},
+                        'Corner brackets': {'border_bracket'}}.get(pattern, set())
+            self.assertEqual(visible, expected)
+        for index, image in enumerate(renders):
+            for other in renders[:index]:
+                self.assertNotEqual(image, other)
+        studio.border_pattern.setCurrentText('Single rim')
+        studio.border_style.setCurrentText('Chrome')
+        chrome = render_scene(studio.scene)
+        studio.border_style.setCurrentText('Brushed metal')
+        self.assertNotEqual(chrome, render_scene(studio.scene))
+        before = render_scene(studio.scene)
+        studio.scene_change('border_highlight', '#ff0000')
+        self.assertNotEqual(before, render_scene(studio.scene))
+        studio.reset_finish_colours()
+        self.assertEqual(before, render_scene(studio.scene))
+        studio.border_pattern.setCurrentText('Double rim')
+        before = render_scene(studio.scene)
+        studio.border_parameters['border_gap'][1].setValue(12)
+        self.assertNotEqual(before, render_scene(studio.scene))
+        studio.undo()
+        self.assertEqual(before, render_scene(studio.scene))
+
+    def test_named_border_presets_persist_apply_undo_and_delete(self):
+        from playlite_plugins.iconstudio.presets import load_presets
+        from PyQt6.QtWidgets import QInputDialog, QMessageBox
+        studio = self.studio()
+        studio.border_shape.setCurrentText('Rounded square')
+        studio.border_pattern.setCurrentText('Double rim')
+        studio.border_style.setCurrentText('Gold')
+        studio.border_rotation.setValue(20)
+        studio.scene_change('border_highlight', '#ffff88')
+        with patch.object(QInputDialog, 'getText', return_value=('My gold', True)):
+            studio.save_border_preset()
+        saved = load_presets(studio.presets_path)
+        self.assertEqual(saved['My gold']['border_pattern'], 'Double rim')
+        self.assertNotIn('layers', saved['My gold'])
+        second = self.studio()
+        self.assertIn('My gold', second.border_presets)
+        second.saved_border.setCurrentText('My gold')
+        original = second.scene.copy()
+        second.apply_border_preset()
+        self.assertEqual(second.scene['border_rotation'], 20)
+        self.assertEqual(second.scene['border_highlight'], '#ffff88')
+        self.assertEqual(second.scene['layers'], original['layers'])
+        self.assertEqual(second.scene['size'], original['size'])
+        second.undo()
+        self.assertEqual(second.scene, original)
+        with patch.object(QMessageBox, 'question', return_value=QMessageBox.StandardButton.Yes):
+            second.delete_border_preset()
+        self.assertEqual(load_presets(studio.presets_path), {})
+        self.assertTrue(self.source.exists())
 
     def test_trim_stops_image_at_border_center_line(self):
         studio = self.studio()

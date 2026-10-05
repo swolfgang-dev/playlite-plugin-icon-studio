@@ -5,10 +5,12 @@ from PyQt6.QtCore import Qt, QRectF, pyqtSignal
 from PyQt6.QtGui import QImage, QPainter, QColor, QPen
 from PyQt6.QtWidgets import (QDialog, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
     QSizePolicy, QGroupBox, QCheckBox, QLabel, QComboBox, QPushButton, QDialogButtonBox, QListWidget,
-    QListWidgetItem, QLineEdit, QColorDialog, QInputDialog, QScrollArea)
+    QListWidgetItem, QLineEdit, QColorDialog, QInputDialog, QScrollArea, QMessageBox)
 from playlite.lifecycle import choose_file, run_dialog
 from .model import PRESETS, image_layer, render_scene
 from .number_slider import NumberSlider
+from .borders import STYLES, PATTERNS, BORDER_KEYS, colours
+from .presets import default_path, load_presets, save_presets
 
 
 class Canvas(QWidget):
@@ -70,7 +72,7 @@ class Canvas(QWidget):
 
 
 class ImageStudio(QDialog):
-    def __init__(self, source=None, image_type='Icon', parent=None, pick_overlay=None, pick_source=None):
+    def __init__(self, source=None, image_type='Icon', parent=None, pick_overlay=None, pick_source=None, presets_path=None):
         super().__init__(parent)
         self.setWindowTitle('Image Studio')
         self.resize(1150, 820)
@@ -80,6 +82,16 @@ class ImageStudio(QDialog):
         self.scene = dict(size=PRESETS[image_type], shape='Rectangle', fit='Fill',
             background='transparent', image_size=100, border_size=100, border_rotation=0, border=0, border_enabled=False, border_color='#ffffff', border_shape='Follow crop', border_style='Solid colour', border_radius=0, transparent_outside=False,
             layers=[image_layer(image, 'Source image', True)])
+        self.scene.update(border_pattern='Single rim', border_gap=3, border_spacing=12,
+                          border_glow=12, border_bracket=30, border_rim_color='#000000',
+                          border_highlight=None, border_midtone=None, border_shadow=None)
+        self.presets_path = Path(presets_path) if presets_path else default_path(parent)
+        self.preset_error = ''
+        try:
+            self.border_presets = load_presets(self.presets_path)
+        except (OSError, ValueError) as error:
+            self.border_presets = {}
+            self.preset_error = str(error)
         self.image_type = image_type
         self.pick_overlay = pick_overlay
         self.pick_source = pick_source
@@ -178,12 +190,29 @@ class ImageStudio(QDialog):
         border_layout = QVBoxLayout(self.border_settings)
         border_layout.setContentsMargins(0, 0, 0, 0)
         border_form = form_in(border_layout)
+        presets_row = QHBoxLayout()
+        self.saved_border = QComboBox()
+        self.saved_border.addItem('Choose saved preset…')
+        self.saved_border.addItems(sorted(self.border_presets))
+        self.saved_border.activated.connect(self.apply_border_preset)
+        presets_row.addWidget(self.saved_border, 1)
+        save_border = QPushButton('Save…')
+        save_border.clicked.connect(self.save_border_preset)
+        presets_row.addWidget(save_border)
+        self.delete_border_preset_button = QPushButton('Delete')
+        self.delete_border_preset_button.clicked.connect(self.delete_border_preset)
+        presets_row.addWidget(self.delete_border_preset_button)
+        border_form.addRow('Presets', presets_row)
+        self.border_pattern = QComboBox()
+        self.border_pattern.addItems(PATTERNS)
+        self.border_pattern.currentTextChanged.connect(lambda value: self.scene_change('border_pattern', value))
+        border_form.addRow('Pattern', self.border_pattern)
         self.border_shape = QComboBox()
         self.border_shape.addItems(['None', 'Follow crop', 'Circle', 'Square', 'Rounded square'])
         self.border_shape.currentTextChanged.connect(self.set_border_shape)
         border_form.addRow('Shape', self.border_shape)
         self.border_style = QComboBox()
-        self.border_style.addItems(['Silver', 'Gold', 'Dark metal', 'Solid colour', 'None'])
+        self.border_style.addItems(STYLES)
         self.border_style.currentTextChanged.connect(self.set_border_style)
         frame_row = QHBoxLayout()
         frame_row.addWidget(self.border_style)
@@ -206,6 +235,27 @@ class ImageStudio(QDialog):
         self.border_color_button = QPushButton('Colour…')
         self.border_color_button.clicked.connect(lambda: self.choose_scene_color('border_color'))
         border_form.addRow(self.border_color_button)
+        self.border_parameters = {}
+        for key, label, minimum, maximum in (
+                ('border_gap', 'Rim gap (px)', 0, 100),
+                ('border_spacing', 'Spacing (px)', 1, 100),
+                ('border_glow', 'Glow spread (px)', 0, 100),
+                ('border_bracket', 'Corner length (%)', 1, 100)):
+            control = NumberSlider()
+            control.setRange(minimum, maximum)
+            control.valueChanged.connect(lambda value, key=key: self.scene_change(key, value))
+            border_form.addRow(label, control)
+            self.border_parameters[key] = (border_form.labelForField(control), control)
+        self.border_colours = {}
+        for key, label in (('border_highlight', 'Highlight'), ('border_midtone', 'Midtone'),
+                           ('border_shadow', 'Shadow'), ('border_rim_color', 'Outer rim')):
+            button = QPushButton(label + '…')
+            button.clicked.connect(lambda checked=False, key=key: self.choose_border_colour(key))
+            border_form.addRow(button)
+            self.border_colours[key] = button
+        self.reset_border_colours = QPushButton('Reset finish colours')
+        self.reset_border_colours.clicked.connect(self.reset_finish_colours)
+        border_form.addRow(self.reset_border_colours)
         self.transparent_outside = QCheckBox('Trim image outside border')
         self.transparent_outside.toggled.connect(lambda value: self.scene_change('transparent_outside', value))
         border_form.addRow(self.transparent_outside)
@@ -344,7 +394,7 @@ class ImageStudio(QDialog):
         self.scene[key] = value
         if key == 'shape' and value == 'Circle':
             self.scene['border_radius'] = min(self.scene['size']) // 2
-        if key == 'shape':
+        if key in ('shape', 'border_pattern'):
             self.sync_scene()
         self.render()
 
@@ -516,6 +566,7 @@ class ImageStudio(QDialog):
         self.shape.setCurrentText(self.scene['shape'])
         self.border_shape.setCurrentText(self.scene.get('border_shape', 'Follow crop'))
         self.border_style.setCurrentText(self.scene.get('border_style', 'Solid colour'))
+        self.border_pattern.setCurrentText(self.scene.get('border_pattern', 'Single rim'))
         self.image_size.setValue(self.scene.get('image_size', 100))
         self.border_size.setValue(self.scene.get('border_size', 100))
         self.border_rotation.setValue(self.scene.get('border_rotation', 0))
@@ -526,7 +577,25 @@ class ImageStudio(QDialog):
         has_shape = enabled and self.scene.get('border_shape') != 'None'
         self.border_style.setEnabled(has_shape)
         self.border.setEnabled(has_shape and self.scene.get('border_style') != 'None')
-        self.border_color_button.setEnabled(has_shape and self.scene.get('border_style') == 'Solid colour')
+        pattern = self.scene.get('border_pattern', 'Single rim')
+        solid = self.scene.get('border_style') == 'Solid colour'
+        show_base_colour = solid and pattern not in ('Raised bevel', 'Recessed bevel') or pattern == 'Glow'
+        self.border_color_button.setVisible(show_base_colour)
+        self.border_color_button.setEnabled(has_shape and show_base_colour)
+        self.border_color_button.setText(('Glow / base colour' if pattern == 'Glow' else 'Colour') + '…')
+        for key, (label, control) in self.border_parameters.items():
+            visible = pattern == {'border_gap': 'Double rim', 'border_spacing': pattern if pattern in ('Dashed', 'Dotted') else '', 'border_glow': 'Glow', 'border_bracket': 'Corner brackets'}[key]
+            label.setVisible(visible)
+            control.setVisible(visible)
+            control.setValue(self.scene[key])
+        for key, button in self.border_colours.items():
+            visible = key == 'border_rim_color' or not solid or pattern in ('Raised bevel', 'Recessed bevel')
+            if key == 'border_midtone' and pattern in ('Raised bevel', 'Recessed bevel'):
+                visible = False
+            button.setVisible(visible)
+        self.reset_border_colours.setVisible(not solid or pattern in ('Raised bevel', 'Recessed bevel'))
+        self.delete_border_preset_button.setEnabled(self.saved_border.currentText() in self.border_presets)
+
         limit = min(self.scene['size']) // 2
         self.border_radius.setRange(0, limit)
         self.scene['border_radius'] = min(self.scene.get('border_radius', 0), limit)
@@ -543,6 +612,75 @@ class ImageStudio(QDialog):
         self.preset.setCurrentIndex(index)
         self.syncing = False
         self.rebuild_layers(min(self.layer_index(), len(self.scene['layers']) - 1))
+
+    def choose_border_colour(self, key):
+        if key == 'border_rim_color':
+            initial = self.scene[key]
+        else:
+            initial = colours(self.scene)[('border_highlight', 'border_midtone', 'border_shadow').index(key)]
+        colour = QColorDialog.getColor(QColor(initial), self)
+        if colour.isValid():
+            self.scene_change(key, colour.name())
+
+    def reset_finish_colours(self):
+        self.remember()
+        for key in ('border_highlight', 'border_midtone', 'border_shadow'):
+            self.scene[key] = None
+        self.render()
+
+    def refresh_border_presets(self, name=''):
+        self.saved_border.clear()
+        self.saved_border.addItem('Choose saved preset…')
+        self.saved_border.addItems(sorted(self.border_presets))
+        if name:
+            self.saved_border.setCurrentText(name)
+        self.delete_border_preset_button.setEnabled(name in self.border_presets)
+
+    def save_border_preset(self):
+        if self.preset_error:
+            QMessageBox.warning(self, 'Cannot save presets', self.preset_error)
+            return
+        name, accepted = QInputDialog.getText(self, 'Save border preset', 'Preset name')
+        name = name.strip()
+        if not accepted or not name:
+            return
+        if name in self.border_presets and QMessageBox.question(self, 'Replace preset',
+                f'Replace “{name}”?') != QMessageBox.StandardButton.Yes:
+            return
+        updated = dict(self.border_presets)
+        updated[name] = {key: self.scene[key] for key in BORDER_KEYS}
+        try:
+            save_presets(self.presets_path, updated)
+        except OSError as error:
+            QMessageBox.warning(self, 'Cannot save preset', str(error))
+            return
+        self.border_presets = updated
+        self.refresh_border_presets(name)
+
+    def apply_border_preset(self, *_):
+        values = self.border_presets.get(self.saved_border.currentText())
+        if not values:
+            return
+        self.remember()
+        self.scene.update(values)
+        self.sync_scene()
+        self.render()
+
+    def delete_border_preset(self):
+        name = self.saved_border.currentText()
+        if name not in self.border_presets:
+            return
+        if QMessageBox.question(self, 'Delete border preset', f'Delete “{name}”?') != QMessageBox.StandardButton.Yes:
+            return
+        updated = dict(self.border_presets)
+        del updated[name]
+        try:
+            save_presets(self.presets_path, updated)
+        except OSError as error:
+            QMessageBox.warning(self, 'Cannot delete preset', str(error))
+            return
+        self.border_presets = updated
+        self.refresh_border_presets()
 
     def choose_scene_color(self, key):
         color = QColorDialog.getColor(QColor(self.scene[key]) if self.scene[key] != 'transparent' else QColor('black'), self)

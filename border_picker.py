@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBo
 from .model import render_scene
 from .number_slider import NumberSlider
 
-STYLES = ('Silver', 'Gold', 'Dark metal', 'Solid colour', 'None')
+from .borders import STYLES, PATTERNS
 SHAPES = ('None', 'Follow crop', 'Circle', 'Square', 'Rounded square')
 
 
@@ -22,6 +22,9 @@ class BorderPicker(QDialog):
         layout.addWidget(hint)
         row = QFormLayout()
         row.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
+        self.pattern = QComboBox()
+        self.pattern.addItems(PATTERNS)
+        self.pattern.setCurrentText(scene.get('border_pattern', 'Single rim'))
         self.shape = QComboBox()
         self.shape.addItems(SHAPES)
         self.shape.setCurrentText(scene.get('border_shape', 'Follow crop'))
@@ -37,7 +40,7 @@ class BorderPicker(QDialog):
         self.radius = NumberSlider()
         self.radius.setRange(0, min(scene['size']) // 2)
         self.radius.setValue(scene.get('border_radius', 32))
-        for label, widget in [('Shape', self.shape), ('Border size (%)', self.size), ('Rotation (°)', self.rotation), ('Thickness (px)', self.width), ('Radius (px)', self.radius)]:
+        for label, widget in [('Pattern', self.pattern), ('Shape', self.shape), ('Border size (%)', self.size), ('Rotation (°)', self.rotation), ('Thickness (px)', self.width), ('Radius (px)', self.radius)]:
             row.addRow(label, widget)
         layout.addLayout(row)
         self.styles = QListWidget()
@@ -57,6 +60,7 @@ class BorderPicker(QDialog):
         buttons.rejected.connect(self.reject)
         self.styles.itemDoubleClicked.connect(lambda *_: self.accept())
         layout.addWidget(buttons)
+        self.pattern.currentTextChanged.connect(self.refresh)
         self.shape.currentTextChanged.connect(self.refresh)
         self.size.valueChanged.connect(self.refresh)
         self.rotation.valueChanged.connect(self.refresh)
@@ -66,7 +70,7 @@ class BorderPicker(QDialog):
 
     @property
     def selected(self):
-        return dict(border_style=self.styles.currentItem().text(), border_shape=self.shape.currentText(),
+        return dict(border_pattern=self.pattern.currentText(), border_style=self.styles.currentItem().text(), border_shape=self.shape.currentText(),
                     border=self.width.value(), border_size=self.size.value(), border_rotation=self.rotation.value(), border_radius=self.radius.value(), shape=self.scene['shape'])
 
     def change_radius(self, *_):
@@ -80,7 +84,7 @@ class BorderPicker(QDialog):
 
     def refresh(self, *_):
         self.radius.setEnabled(self.shape.currentText() != 'None')
-        scene = dict(self.scene, border_size=self.size.value(), border_rotation=self.rotation.value(), border_enabled=True, border_shape=self.shape.currentText(), border=self.width.value(),
+        scene = dict(self.scene, border_pattern=self.pattern.currentText(), border_size=self.size.value(), border_rotation=self.rotation.value(), border_enabled=True, border_shape=self.shape.currentText(), border=self.width.value(),
                      border_radius=self.radius.value())
         w, h = scene['size']
         scale = min(190 / w, 150 / h)

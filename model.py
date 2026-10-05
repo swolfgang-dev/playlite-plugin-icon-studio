@@ -1,7 +1,8 @@
 """Image Studio's non-destructive composition and PNG rendering."""
 from PyQt6.QtCore import Qt, QRectF
-from PyQt6.QtGui import QImage, QPainter, QPainterPath, QColor, QPen, QFont, QFontMetricsF, QLinearGradient, QTransform
+from PyQt6.QtGui import QImage, QPainter, QPainterPath, QColor, QPen, QFont, QFontMetricsF, QTransform
 
+from .borders import draw_border
 
 PRESETS = {'Icon': (256, 256), 'CoverImage': (600, 900),
            'HeaderImage': (1920, 620), 'BackgroundImage': (1920, 1080)}
@@ -105,20 +106,8 @@ def render_scene(scene, width=None, height=None):
             draw_layer(layer)
     painter.setClipping(False)
     if border_width and border_path is not None:
-        brush = QColor(scene['border_color'])
-        if style in ('Silver', 'Gold', 'Dark metal'):
-            light, mid = {'Silver': ('#ffffff', '#808080'),
-                          'Gold': ('#fafad2', '#daa520'),
-                          'Dark metal': ('#808080', '#373737')}[style]
-            brush = QLinearGradient(border_transform.map(border_rect.topLeft()), border_transform.map(border_rect.bottomRight()))
-            for position, color in ((0, light), (.35, mid), (.6, '#000000'), (1, light)):
-                brush.setColorAt(position, QColor(color))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.setPen(QPen(QColor('black'), thickness))
-        painter.drawPath(border_path)
-        painter.setPen(QPen(brush, min(border_width, thickness)))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawPath(border_path)
+        draw_border(painter, scene, border_path, border_rect, border_transform,
+                    min(border_width, thickness), thickness, width / output_width)
     # Foreground overlays sit above the frame and are bounded only by the canvas.
     painter.setClipping(False)
     for layer in scene['layers']:
