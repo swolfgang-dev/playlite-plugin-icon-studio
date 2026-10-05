@@ -16,12 +16,12 @@ class Plugin(GenericPlugin):
             button.clicked.connect(lambda checked=False, key=key: self.open_studio(editor, key))
             card.actions.insertWidget(card.actions.count() - 1, button)
 
-    def pick_image(self, editor, key, parent=None, caches=None):
+    def pick_image(self, editor, key, parent=None, caches=None, logos=False):
         from playlite.image_dialog import ImageDownloader
         from PyQt6.QtGui import QImageReader
         picker = ImageDownloader(editor.image_download_context(), parent or editor,
-                                 settings_path=editor.data / 'ui.ini')
-        picker.tabs.setCurrentIndex(picker.image_keys.index(key))
+                                 settings_path=editor.data / 'ui.ini', logo_target=key)
+        picker.tabs.setCurrentIndex(picker.image_keys.index('Logo' if logos else key))
         picker.apply_button.setText('Use selected image')
         source = editor.media[key].text()
         row = QHBoxLayout()
@@ -62,7 +62,7 @@ class Plugin(GenericPlugin):
             return
         try:
             studio = ImageStudio(source, key, editor,
-                pick_overlay=lambda parent: self.pick_image(editor, key, parent, caches))
+                pick_overlay=lambda parent: self.pick_image(editor, key, parent, caches, logos=True))
         except ValueError as error:
             for cache in caches:
                 cache.cleanup()

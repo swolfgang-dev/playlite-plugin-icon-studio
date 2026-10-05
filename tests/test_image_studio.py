@@ -173,3 +173,21 @@ class ImageStudioTests(unittest.TestCase):
         self.assertEqual(len(caches), 1)
         for cache in caches:
             cache.cleanup()
+
+    def test_overlay_picker_defaults_to_logos(self):
+        editor = MetadataEditor(dict(Id='test', Name='Example'), self.root)
+        self.addCleanup(editor.reject)
+        plugin = require_plugin('IconStudio')
+        module = importlib.import_module(plugin.__class__.__module__)
+        def pick(dialog):
+            self.assertEqual(dialog.active_key, 'Logo')
+            self.assertEqual(dialog.filters['Logo'][0].values(), ['Logo'])
+            dialog.show_images({'Logo': ([('Logo', str(self.source), {'Logo'})], [])})
+            dialog.select_image(key='Logo')
+            self.assertEqual(dialog.applied, {'HeaderImage': str(self.source)})
+            return QDialog.DialogCode.Accepted
+        caches = []
+        with patch.object(module, 'run_dialog', side_effect=pick):
+            self.assertEqual(plugin.pick_image(editor, 'HeaderImage', caches=caches, logos=True), str(self.source))
+        for cache in caches:
+            cache.cleanup()
