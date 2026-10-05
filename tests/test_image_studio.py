@@ -268,3 +268,20 @@ class ImageStudioTests(unittest.TestCase):
         self.assertEqual(len(studio.undo_states), 1)
         studio.undo()
         self.assertEqual(studio.scene, before)
+
+    def test_controls_fit_scroll_viewport_with_large_font(self):
+        original_font = APP.font()
+        larger_font = APP.font()
+        larger_font.setPointSize(18)
+        APP.setFont(larger_font)
+        self.addCleanup(APP.setFont, original_font)
+        studio = self.studio()
+        studio.show()
+        APP.processEvents()
+        scroll = studio.controls_scroll
+        content = scroll.widget()
+        self.assertLessEqual(content.width(), scroll.viewport().width())
+        for button in content.findChildren(QPushButton):
+            if button.parentWidget() is content:
+                self.assertLessEqual(button.geometry().right(), content.width(), button.text())
+        self.assertGreaterEqual(studio.border_picker_button.width(), studio.border_picker_button.minimumSizeHint().width())
