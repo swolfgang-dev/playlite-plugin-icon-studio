@@ -22,7 +22,7 @@ original downloaded/local image files are never overwritten. Output is limited
 to 4096 pixels per dimension. Projects/layers are kept for the editing session;
 reopening an applied image starts from the flattened PNG.
 
-Install/update via Settings → Plugins. The existing IconStudio plugin ID and
+Install/update via Settings → Plugins. The existing IconStudio plugin ID
 is retained for compatible updates; the displayed name is now
 Image Studio. New installations are enabled by default; existing enable/disable
 choices are preserved. Right-click the installed plugin to enable it, then restart
