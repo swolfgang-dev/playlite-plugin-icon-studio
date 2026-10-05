@@ -34,7 +34,7 @@ def render_scene(scene, width=None, height=None):
     else:
         clip.addRect(rect)
     border_path = None
-    has_border_shape = scene.get('border_shape') != 'None'
+    has_border_shape = scene.get('border_enabled', True) and scene.get('border_shape') != 'None'
     style = scene.get('border_style', 'Solid colour')
     border_width = scene['border'] * width / output_width if has_border_shape and style != 'None' else 0
     rim_width = border_width + 3 * width / output_width if border_width else 0

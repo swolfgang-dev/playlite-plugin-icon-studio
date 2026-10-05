@@ -72,7 +72,7 @@ class BorderPicker(QDialog):
 
     def refresh(self, *_):
         self.radius.setEnabled(self.shape.currentText() != 'None')
-        scene = dict(self.scene, border_shape=self.shape.currentText(), border=self.width.value(),
+        scene = dict(self.scene, border_enabled=True, border_shape=self.shape.currentText(), border=self.width.value(),
                      border_radius=self.radius.value())
         w, h = scene['size']
         scale = min(190 / w, 150 / h)

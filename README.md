@@ -9,25 +9,28 @@ at the bottom right opens the downloader on the matching image type to replace
 the source. Replacement preserves the output, borders, and overlays and can be
 undone. Canceling the downloader keeps the current image.
 
-Image Studio provides output/aspect presets, custom dimensions, fill/fit cropping,
-drag-to-pan, mouse-wheel zoom, numeric zoom/pan controls, rotation, opacity,
-transparent or colored backgrounds, crop shapes, and borders. Add image or text
-overlays (Add image opens the downloader’s Logos tab by default), select a layer to transform it, reorder/hide/remove overlays, or undo and
-redo changes. Stock circle, square, and rounded-square borders fit inside the
-canvas without changing its dimensions. Selecting a stock shape enables an 8px
-border; adjust its thickness and color as needed. Frame styles match the original
-Playnite Icon Studio: Silver, Gold, Dark metal, Solid colour, and None, with the
-same diagonal metallic gradients and black rim. These are vector presets and
-remain sharp at any export size. Choose… opens a visual border picker showing
-each style on your current composition. Adjust shape, thickness, and radius there;
-Apply commits the selection in one undo step, and Cancel leaves it unchanged. Borders can also follow the crop. Corner radius replaces the crop-shape selector: zero gives square corners,
-maximum rounds a square canvas into a circle, and intermediate values round its
-corners. It also works with no border. Numeric controls use sliders with visible
-values; dragging a slider is a single undo step.
-Transparent outside border removes exterior pixels from the source image and
-background. Image and text overlays are drawn above the frame and can extend
-beyond it, up to the output canvas edges.
-The blue frame shows exactly what will be exported.
+The workflow is Image → optional Border → optional Overlays → Output:
+
+- Image contains its own sizing, corner radius, scale, position, rotation, opacity,
+  background, replacement, and reset controls. Radius zero gives square corners;
+  maximum radius gives a circle on a square canvas.
+- Enable border is off initially. Enabling it reveals the visual style picker,
+  thickness, colour, and Trim image outside border. It follows the crop by default;
+  additional shapes are available. Silver, Gold, Dark metal, Solid colour, and None
+  match the original Playnite Icon Studio vector rims. Disabling a border retains
+  its settings for re-enabling and does not change the source crop.
+- Overlays starts empty; Add image opens Logos in the downloader, and Add text
+  creates a text overlay. The list contains overlays only, with visibility toggles.
+  Selecting one reveals its separate transform, reorder, remove, and reset controls;
+  text options appear only for text overlays. Foreground overlays extend beyond
+  the border, up to the output edges.
+- Output provides aspect/size presets and custom dimensions. Numeric controls use
+  sliders with visible values; each drag is one undo step.
+
+Dragging or scrolling the preview edits the selected overlay, or the image when
+none is selected. The label below the preview names the active target. Adjusting
+an Image control returns preview interactions to the image. Undo/Redo remain
+available in the footer, beside Download image, Apply, and Cancel.
 
 Apply renders a PNG into a temporary folder and fills only the target image field.
 Save the game in Playlite to keep it. Cancel leaves the existing image untouched;

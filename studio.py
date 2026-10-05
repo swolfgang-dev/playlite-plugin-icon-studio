@@ -4,7 +4,7 @@ from pathlib import Path
 from PyQt6.QtCore import Qt, QRectF, pyqtSignal
 from PyQt6.QtGui import QImage, QPainter, QColor, QPen
 from PyQt6.QtWidgets import (QDialog, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QCheckBox, QLabel, QComboBox, QPushButton, QDialogButtonBox, QListWidget,
+    QSizePolicy, QGroupBox, QCheckBox, QLabel, QComboBox, QPushButton, QDialogButtonBox, QListWidget,
     QListWidgetItem, QLineEdit, QColorDialog, QInputDialog, QScrollArea)
 from playlite.lifecycle import choose_file, run_dialog
 from .model import PRESETS, image_layer, render_scene
@@ -78,7 +78,7 @@ class ImageStudio(QDialog):
         if not source:
             image.fill(Qt.GlobalColor.transparent)
         self.scene = dict(size=PRESETS[image_type], shape='Rectangle', fit='Fill',
-            background='transparent', border=0, border_color='#ffffff', border_shape='Follow crop', border_style='Solid colour', border_radius=0, transparent_outside=False,
+            background='transparent', border=0, border_enabled=False, border_color='#ffffff', border_shape='Follow crop', border_style='Solid colour', border_radius=0, transparent_outside=False,
             layers=[image_layer(image, 'Source image', True)])
         self.image_type = image_type
         self.pick_overlay = pick_overlay
@@ -90,7 +90,7 @@ class ImageStudio(QDialog):
         self.syncing = False
         self.dragging_slider = False
         layout = QVBoxLayout(self)
-        help_text = QLabel('Drag to pan the selected layer; use the mouse wheel to zoom. The blue frame is the crop and exported image. Edits stay in this window until Apply, then save the game to keep them.')
+        help_text = QLabel('Start with your image, then add an optional border and overlays. Drag to position; scroll to scale. Apply returns the result to the game editor; save the game to keep it.')
         help_text.setWordWrap(True)
         layout.addWidget(help_text)
         body = QHBoxLayout()
@@ -99,7 +99,7 @@ class ImageStudio(QDialog):
         body.addWidget(self.canvas, 1)
         self.canvas.dragStarted.connect(self.remember)
         self.canvas.pan.connect(self.pan_layer)
-        self.canvas.zoom.connect(lambda delta: self.transform['zoom'].setValue(self.layer()['zoom'] + delta))
+        self.canvas.zoom.connect(lambda delta: (self.source_transform if self.layer()['base'] else self.transform)['zoom'].setValue(self.layer()['zoom'] + delta))
         content = QWidget()
         controls = QVBoxLayout(content)
         content.setContentsMargins(12, 0, 12, 0)
@@ -109,30 +109,50 @@ class ImageStudio(QDialog):
         scroll.setMinimumWidth(370)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         body.addWidget(scroll)
-        controls.addWidget(QLabel('Crop / output'))
-        form = QFormLayout()
-        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
-        controls.addLayout(form)
-        self.preset = QComboBox()
-        self.preset.addItems(['Icon · 1:1', 'Cover · 2:3', 'Header · 96:31', 'Background · 16:9', 'Original size', 'Custom'])
-        self.preset.setCurrentIndex(list(PRESETS).index(image_type))
-        self.preset.currentIndexChanged.connect(self.set_preset)
-        form.addRow('Aspect / size', self.preset)
-        self.width_control, self.height_control = NumberSlider(), NumberSlider()
-        for control, value in zip((self.width_control, self.height_control), self.scene['size']):
-            control.setRange(1, 4096)
-            control.setValue(value)
-            control.valueChanged.connect(self.change_size)
-        form.addRow('Width (px)', self.width_control)
-        form.addRow('Height (px)', self.height_control)
+        def section(title):
+            group = QGroupBox(title)
+            box = QVBoxLayout(group)
+            box.setSpacing(10)
+            controls.addWidget(group)
+            return group, box
+
+        def form_in(box):
+            form = QFormLayout()
+            form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
+            box.addLayout(form)
+            return form
+
+        def transforms(form, source=False):
+            result = {}
+            for name, title, low, high in [('zoom', 'Scale (%)', 10, 800), ('x', 'Position X (%)', -100, 200),
+                                          ('y', 'Position Y (%)', -100, 200), ('rotation', 'Rotation (°)', -180, 180),
+                                          ('opacity', 'Opacity (%)', 0, 100)]:
+                slider = NumberSlider()
+                slider.setRange(low, high)
+                callback = self.source_layer_change if source else self.layer_change
+                slider.valueChanged.connect(lambda value, key=name, callback=callback: callback(key, value / 100 if key in ('x', 'y') else value))
+                result[name] = slider
+                form.addRow(title, slider)
+            return result
+
+        self.image_group, image_box = section('Image')
+        self.replace_button = QPushButton('Replace image…')
+        self.replace_button.clicked.connect(self.download_source)
+        image_box.addWidget(self.replace_button)
+        image_form = form_in(image_box)
         self.fit = QComboBox()
         self.fit.addItems(['Fill', 'Fit'])
         self.fit.currentTextChanged.connect(lambda value: self.scene_change('fit', value))
-        form.addRow('Source sizing', self.fit)
+        image_form.addRow('Image sizing', self.fit)
         self.shape = QComboBox(self)
         self.shape.addItems(['Rectangle', 'Rounded rectangle', 'Circle'])
         self.shape.currentTextChanged.connect(lambda value: self.scene_change('shape', value))
         self.shape.hide()
+        self.border_radius = NumberSlider()
+        self.border_radius.setRange(0, min(self.scene['size']) // 2)
+        self.border_radius.valueChanged.connect(self.change_border_radius)
+        image_form.addRow('Corner radius (px)', self.border_radius)
+        self.source_transform = transforms(image_form, source=True)
         colors = QHBoxLayout()
         background = QPushButton('Background…')
         background.clicked.connect(lambda: self.choose_scene_color('background'))
@@ -140,11 +160,24 @@ class ImageStudio(QDialog):
         clear.clicked.connect(lambda: self.scene_change('background', 'transparent'))
         colors.addWidget(background)
         colors.addWidget(clear)
-        form.addRow(colors)
+        image_box.addLayout(colors)
+        reset_image = QPushButton('Reset image position / scale')
+        reset_image.clicked.connect(self.reset_source)
+        image_box.addWidget(reset_image)
+
+        self.border_group, border_box = section('Border · optional')
+        self.enable_border = QCheckBox('Enable border')
+        self.enable_border.toggled.connect(self.toggle_border)
+        border_box.addWidget(self.enable_border)
+        self.border_settings = QWidget()
+        border_box.addWidget(self.border_settings)
+        border_layout = QVBoxLayout(self.border_settings)
+        border_layout.setContentsMargins(0, 0, 0, 0)
+        border_form = form_in(border_layout)
         self.border_shape = QComboBox()
         self.border_shape.addItems(['None', 'Follow crop', 'Circle', 'Square', 'Rounded square'])
         self.border_shape.currentTextChanged.connect(self.set_border_shape)
-        form.addRow('Stock border', self.border_shape)
+        border_form.addRow('Shape', self.border_shape)
         self.border_style = QComboBox()
         self.border_style.addItems(['Silver', 'Gold', 'Dark metal', 'Solid colour', 'None'])
         self.border_style.currentTextChanged.connect(self.set_border_style)
@@ -153,77 +186,97 @@ class ImageStudio(QDialog):
         self.border_picker_button = QPushButton('Choose…')
         self.border_picker_button.clicked.connect(self.choose_border)
         frame_row.addWidget(self.border_picker_button)
-        form.addRow('Frame style', frame_row)
+        border_form.addRow('Style', frame_row)
         self.border = NumberSlider()
         self.border.setRange(0, 100)
         self.border.valueChanged.connect(lambda value: self.scene_change('border', value))
-        border_row = QHBoxLayout()
-        border_row.addWidget(self.border)
-        border_color = self.border_color_button = QPushButton('Color…')
-        border_color.clicked.connect(lambda: self.choose_scene_color('border_color'))
-        border_row.addWidget(border_color)
-        form.addRow('Border (px)', border_row)
-        self.border_radius = NumberSlider()
-        self.border_radius.setRange(0, min(self.scene['size']) // 2)
-        self.border_radius.valueChanged.connect(self.change_border_radius)
-        form.addRow('Corner radius (px)', self.border_radius)
-        self.transparent_outside = QCheckBox('Transparent outside border')
+        border_form.addRow('Thickness (px)', self.border)
+        self.border_color_button = QPushButton('Colour…')
+        self.border_color_button.clicked.connect(lambda: self.choose_scene_color('border_color'))
+        border_form.addRow(self.border_color_button)
+        self.transparent_outside = QCheckBox('Trim image outside border')
         self.transparent_outside.toggled.connect(lambda value: self.scene_change('transparent_outside', value))
-        form.addRow(self.transparent_outside)
-        controls.addWidget(QLabel('Layers · select a layer to edit it'))
+        border_form.addRow(self.transparent_outside)
+        border_hint = QLabel('Overlays can extend beyond the border.')
+        border_hint.setWordWrap(True)
+        border_layout.addWidget(border_hint)
+
+        self.overlays_group, overlay_box = section('Overlays · optional')
         self.layers = QListWidget()
         self.layers.setMaximumHeight(130)
         self.layers.currentRowChanged.connect(self.sync_layer)
         self.layers.itemChanged.connect(self.change_visibility)
-        controls.addWidget(self.layers)
-        for entries in ([('Add image…', self.add_image), ('Add text…', self.add_text)],
-                        [('Raise', lambda: self.move_layer(1)), ('Lower', lambda: self.move_layer(-1)), ('Remove', self.remove_layer)]):
-            row = QHBoxLayout()
-            for title, callback in entries:
-                button = QPushButton(title)
-                button.clicked.connect(callback)
-                row.addWidget(button)
-            controls.addLayout(row)
-        transform_form = QFormLayout()
-        transform_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
-        controls.addLayout(transform_form)
-        self.transform = {}
-        for name, title, low, high in [('zoom', 'Zoom (%)', 10, 800), ('x', 'Pan X (%)', -100, 200),
-                                      ('y', 'Pan Y (%)', -100, 200), ('rotation', 'Rotation (°)', -180, 180),
-                                      ('opacity', 'Opacity (%)', 0, 100)]:
-            spin = NumberSlider()
-            spin.setRange(low, high)
-            spin.valueChanged.connect(lambda value, key=name: self.layer_change(key, value / 100 if key in ('x', 'y') else value))
-            self.transform[name] = spin
-            transform_form.addRow(title, spin)
+        overlay_box.addWidget(self.layers)
+        self.overlay_empty = QLabel('No overlays. Add a logo, image, or text.')
+        self.overlay_empty.setWordWrap(True)
+        overlay_box.addWidget(self.overlay_empty)
+        add_row = QHBoxLayout()
+        for title, callback in [('Add image…', self.add_image), ('Add text…', self.add_text)]:
+            button = QPushButton(title)
+            button.clicked.connect(callback)
+            add_row.addWidget(button)
+        overlay_box.addLayout(add_row)
+        self.overlay_settings = QWidget()
+        overlay_box.addWidget(self.overlay_settings)
+        overlay_layout = QVBoxLayout(self.overlay_settings)
+        overlay_layout.setContentsMargins(0, 0, 0, 0)
+        row = QHBoxLayout()
+        for title, callback in [('Raise', lambda: self.move_layer(1)), ('Lower', lambda: self.move_layer(-1)), ('Remove', self.remove_layer)]:
+            button = QPushButton(title)
+            button.clicked.connect(callback)
+            row.addWidget(button)
+        overlay_layout.addLayout(row)
+        transform_form = form_in(overlay_layout)
+        self.transform = transforms(transform_form)
+        self.text_settings = QWidget()
+        overlay_layout.addWidget(self.text_settings)
+        text_layout = QVBoxLayout(self.text_settings)
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_form = form_in(text_layout)
         self.text = QLineEdit()
         self.text.textEdited.connect(lambda value: self.layer_change('text', value))
-        transform_form.addRow('Text', self.text)
+        text_form.addRow('Text', self.text)
         self.text_size = NumberSlider()
         self.text_size.setRange(1, 512)
         self.text_size.valueChanged.connect(lambda value: self.layer_change('text_size', value))
-        transform_form.addRow('Text size (px)', self.text_size)
-        self.text_color = QPushButton('Text color…')
+        text_form.addRow('Text size (px)', self.text_size)
+        self.text_color = QPushButton('Text colour…')
         self.text_color.clicked.connect(self.choose_text_color)
-        transform_form.addRow(self.text_color)
-        reset = QPushButton('Reset layer transforms')
+        text_form.addRow(self.text_color)
+        reset = QPushButton('Reset overlay transforms')
         reset.clicked.connect(self.reset_layer)
-        controls.addWidget(reset)
-        history = QHBoxLayout()
-        self.undo_button, self.redo_button = QPushButton('Undo'), QPushButton('Redo')
-        self.undo_button.clicked.connect(self.undo)
-        self.redo_button.clicked.connect(self.redo)
-        history.addWidget(self.undo_button)
-        history.addWidget(self.redo_button)
-        controls.addLayout(history)
+        overlay_layout.addWidget(reset)
+
+        self.output_group, output_box = section('Output')
+        output_form = form_in(output_box)
+        self.preset = QComboBox()
+        self.preset.addItems(['Icon · 1:1', 'Cover · 2:3', 'Header · 96:31', 'Background · 16:9', 'Original size', 'Custom'])
+        self.preset.setCurrentIndex(list(PRESETS).index(image_type))
+        self.preset.currentIndexChanged.connect(self.set_preset)
+        output_form.addRow('Aspect / size', self.preset)
+        self.width_control, self.height_control = NumberSlider(), NumberSlider()
+        for control, value in zip((self.width_control, self.height_control), self.scene['size']):
+            control.setRange(1, 4096)
+            control.setValue(value)
+            control.valueChanged.connect(self.change_size)
+        output_form.addRow('Width (px)', self.width_control)
+        output_form.addRow('Height (px)', self.height_control)
         controls.addStretch()
+        self.drag_target = QLabel()
+        layout.addWidget(self.drag_target)
         self.error = QLabel()
         self.error.setWordWrap(True)
         layout.addWidget(self.error)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Apply | QDialogButtonBox.StandardButton.Cancel)
         buttons.button(QDialogButtonBox.StandardButton.Apply).clicked.connect(self.save)
         buttons.rejected.connect(self.reject)
+        buttons.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
         footer = QHBoxLayout()
+        self.undo_button, self.redo_button = QPushButton('Undo'), QPushButton('Redo')
+        self.undo_button.clicked.connect(self.undo)
+        self.redo_button.clicked.connect(self.redo)
+        footer.addWidget(self.undo_button)
+        footer.addWidget(self.redo_button)
         footer.addStretch()
         self.download_button = QPushButton('Download image…')
         self.download_button.clicked.connect(self.download_source)
@@ -237,7 +290,7 @@ class ImageStudio(QDialog):
         panel_width = max(370, content.minimumSizeHint().width() + scroll.verticalScrollBar().sizeHint().width() + 2 * scroll.frameWidth())
         scroll.setMinimumWidth(panel_width)
         scroll.setMaximumWidth(panel_width)
-        self.rebuild_layers(0)
+        self.sync_scene()
         self.render()
 
     def snapshot(self):
@@ -257,8 +310,12 @@ class ImageStudio(QDialog):
         self.undo_states = self.undo_states[-100:]
         self.redo_states.clear()
 
+    def layer_index(self):
+        item = self.layers.currentItem()
+        return item.data(Qt.ItemDataRole.UserRole) if item else 0
+
     def layer(self):
-        return self.scene['layers'][max(0, self.layers.currentRow())]
+        return self.scene['layers'][self.layer_index()]
 
     def render(self):
         w, h = self.scene['size']
@@ -279,6 +336,37 @@ class ImageStudio(QDialog):
             self.sync_scene()
         self.render()
 
+    def source_layer_change(self, key, value):
+        if self.syncing or self.scene['layers'][0][key] == value:
+            return
+        self.remember()
+        self.scene['layers'][0][key] = value
+        self.layers.setCurrentRow(-1)
+        self.sync_layer()
+        self.render()
+
+    def reset_source(self):
+        self.remember()
+        self.scene['layers'][0].update(x=.5, y=.5, zoom=100, rotation=0, opacity=100)
+        self.layers.setCurrentRow(-1)
+        self.sync_layer()
+        self.render()
+
+    def toggle_border(self, enabled):
+        if self.syncing:
+            return
+        self.remember()
+        self.scene['border_enabled'] = enabled
+        if enabled:
+            if self.scene['border_shape'] == 'None':
+                self.scene['border_shape'] = 'Follow crop'
+            if self.scene['border_style'] == 'None':
+                self.scene['border_style'] = 'Solid colour'
+            if not self.scene['border']:
+                self.scene['border'] = 8
+        self.sync_scene()
+        self.render()
+
     def layer_change(self, key, value):
         if self.syncing or self.layer()[key] == value:
             return
@@ -296,8 +384,17 @@ class ImageStudio(QDialog):
     def sync_layer(self, *_):
         self.syncing = True
         layer = self.layer()
+        selected = self.layer_index() > 0
+        self.overlay_settings.setVisible(selected)
+        self.overlay_empty.setVisible(len(self.scene['layers']) == 1)
+        self.layers.setVisible(len(self.scene['layers']) > 1)
+        self.drag_target.setText('Drag / wheel edits: ' + (layer['name'] if selected else 'Image'))
+        for key, control in self.source_transform.items():
+            source = self.scene['layers'][0]
+            control.setValue(round(source[key] * 100 if key in ('x', 'y') else source[key]))
         for key, control in self.transform.items():
             control.setValue(round(layer[key] * 100 if key in ('x', 'y') else layer[key]))
+        self.text_settings.setVisible(selected and layer['image'] is None)
         self.text.setText(layer['text'])
         self.text.setEnabled(layer['image'] is None)
         self.text_size.setValue(layer['text_size'])
@@ -308,18 +405,19 @@ class ImageStudio(QDialog):
     def rebuild_layers(self, selected):
         self.layers.blockSignals(True)
         self.layers.clear()
-        for layer in self.scene['layers']:
+        for index, layer in enumerate(self.scene['layers'][1:], 1):
             item = QListWidgetItem(layer['name'])
+            item.setData(Qt.ItemDataRole.UserRole, index)
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
             item.setCheckState(Qt.CheckState.Checked if layer['visible'] else Qt.CheckState.Unchecked)
             self.layers.addItem(item)
-        self.layers.setCurrentRow(selected)
+        self.layers.setCurrentRow(selected - 1)
         self.layers.blockSignals(False)
         self.sync_layer()
 
     def change_visibility(self, item):
         self.remember()
-        self.scene['layers'][self.layers.row(item)]['visible'] = item.checkState() == Qt.CheckState.Checked
+        self.scene['layers'][item.data(Qt.ItemDataRole.UserRole)]['visible'] = item.checkState() == Qt.CheckState.Checked
         self.render()
 
     def change_border_radius(self, value):
@@ -341,6 +439,7 @@ class ImageStudio(QDialog):
             if any(self.scene.get(key) != value for key, value in changes.items()):
                 self.remember()
                 self.scene.update(changes)
+                self.scene['border_enabled'] = changes['border_shape'] != 'None' and changes['border_style'] != 'None'
                 self.sync_scene()
                 self.render()
 
@@ -349,6 +448,7 @@ class ImageStudio(QDialog):
             return
         self.remember()
         self.scene['border_style'] = style
+        self.scene['border_enabled'] = style != 'None'
         if style != 'None' and not self.scene['border']:
             self.scene['border'] = 8
         self.sync_scene()
@@ -359,6 +459,7 @@ class ImageStudio(QDialog):
             return
         self.remember()
         self.scene['border_shape'] = shape
+        self.scene['border_enabled'] = shape != 'None'
         if shape == 'Circle':
             self.scene['border_radius'] = min(self.scene['size']) // 2
         elif shape == 'Square':
@@ -401,7 +502,10 @@ class ImageStudio(QDialog):
         self.border_shape.setCurrentText(self.scene.get('border_shape', 'Follow crop'))
         self.border_style.setCurrentText(self.scene.get('border_style', 'Solid colour'))
         self.border.setValue(self.scene['border'])
-        has_shape = self.scene.get('border_shape') != 'None'
+        enabled = self.scene.get('border_enabled', False)
+        self.enable_border.setChecked(enabled)
+        self.border_settings.setVisible(enabled)
+        has_shape = enabled and self.scene.get('border_shape') != 'None'
         self.border_style.setEnabled(has_shape)
         self.border.setEnabled(has_shape and self.scene.get('border_style') != 'None')
         self.border_color_button.setEnabled(has_shape and self.scene.get('border_style') == 'Solid colour')
@@ -420,7 +524,7 @@ class ImageStudio(QDialog):
                      4 if self.scene['size'] == original else 5)
         self.preset.setCurrentIndex(index)
         self.syncing = False
-        self.rebuild_layers(min(max(0, self.layers.currentRow()), len(self.scene['layers']) - 1))
+        self.rebuild_layers(min(self.layer_index(), len(self.scene['layers']) - 1))
 
     def choose_scene_color(self, key):
         color = QColorDialog.getColor(QColor(self.scene[key]) if self.scene[key] != 'transparent' else QColor('black'), self)
@@ -478,7 +582,7 @@ class ImageStudio(QDialog):
             self.render()
 
     def move_layer(self, direction):
-        row = self.layers.currentRow()
+        row = self.layer_index()
         target = row + direction
         if row <= 0 or not 1 <= target < len(self.scene['layers']):
             return
@@ -489,7 +593,7 @@ class ImageStudio(QDialog):
         self.render()
 
     def remove_layer(self):
-        row = self.layers.currentRow()
+        row = self.layer_index()
         if row <= 0:
             return
         self.remember()
