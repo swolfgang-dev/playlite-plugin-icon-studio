@@ -1,47 +1,30 @@
-# Icon Studio for Playlite
+# Image Studio for Playlite
 
-Create and edit game icons. Disabled by default.
+Edit icons, covers, headers, and backgrounds from the Images page in Add Game or
+Edit Game. Requires Playlite 0.2.39 or later, plugin API 1.
 
-This repository contains only this plugin. Playlite itself lives in
-[swolfgang-dev/Playlite](https://github.com/swolfgang-dev/Playlite).
-Requires Playlite 0.2.0 or later, plugin API 1.
+The pencil button beside each image's existing controls opens the downloader on
+that image type. Choose downloaded artwork, Use current image, or Open image to
+start from a local file. Apply the selection to open Image Studio.
 
-## Installation
+Image Studio provides output/aspect presets, custom dimensions, fill/fit cropping,
+drag-to-pan, mouse-wheel zoom, numeric zoom/pan controls, rotation, opacity,
+transparent or colored backgrounds, crop shapes, and borders. Add image or text
+overlays, select a layer to transform it, reorder/hide/remove overlays, or undo and
+redo changes. The blue frame shows exactly what will be exported.
 
-Install from the public GitHub release:
+Apply renders a PNG into a temporary folder and fills only the target image field.
+Save the game in Playlite to keep it. Cancel leaves the existing image untouched;
+original downloaded/local image files are never overwritten. Output is limited
+to 4096 pixels per dimension. Projects/layers are kept for the editing session;
+reopening an applied image starts from the flattened PNG.
 
-```sh
-playlite-plugins install swolfgang-dev/playlite-plugin-icon-studio
-```
+Install/update via Settings → Plugins. The existing IconStudio plugin ID and
+source repository are retained for compatible updates; the displayed name is now
+Image Studio. New installations are enabled by default; existing enable/disable
+choices are preserved. Right-click the installed plugin to enable it, then restart
+Playlite if needed.
 
-Or choose Settings → Plugins → Installed → Install / update from GitHub.
-Restart Playlite after installation or updating. Settings and game data remain in
-Playlite's existing user-data folders. Icon Studio stays disabled until enabled in its installed manifest.
-
-## Releases
-
-Push a `v1.0.0`-style tag to run the release workflow. Each release
-contains `plugin.zip` and `SHA256SUMS`. The archive has `manifest.json` and
-`plugin.py` at its root; it never includes the base application.
-
-Build locally with `python3 tools/build_release.py`.
-The manifest declares any additional Python dependencies, installed into the
-same environment as Playlite.
-
-## Tests
-
-Plugin integration tests live in `tests/`. Install Playlite and the optional
-plugins required by a test, then run:
-
-```sh
-QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -q
-```
-
-Tests requiring absent plugins are skipped. The release workflow checks Python
-syntax and builds the standalone archive; integration tests run locally with
-Playlite installed. Native executables are not bundled in the SteamAutoCrack
-plugin; its separate tool installer downloads/builds them when requested.
-
-## Distribution
-
-Packages are published directly as GitHub releases in this source repository. Tag the manifest version (for example, `v1.0.1`) to build and publish `plugin.zip` and its checksums automatically.
+Build locally with `python3 tools/build_release.py`. CI installs the core and
+isolated plugin fixtures, runs tests, and publishes `plugin.zip` and `SHA256SUMS`
+from version tags.
