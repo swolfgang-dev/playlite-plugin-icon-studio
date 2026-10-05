@@ -2,8 +2,9 @@
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-                            QSpinBox, QListWidget, QListWidgetItem, QDialogButtonBox)
+                            QFormLayout, QListWidget, QListWidgetItem, QDialogButtonBox)
 from .model import render_scene
+from .number_slider import NumberSlider
 
 STYLES = ('Silver', 'Gold', 'Dark metal', 'Solid colour', 'None')
 SHAPES = ('None', 'Follow crop', 'Circle', 'Square', 'Rounded square')
@@ -19,19 +20,19 @@ class BorderPicker(QDialog):
         hint = QLabel('Compare borders on your image. Select a style, then Apply.')
         hint.setWordWrap(True)
         layout.addWidget(hint)
-        row = QHBoxLayout()
+        row = QFormLayout()
+        row.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
         self.shape = QComboBox()
         self.shape.addItems(SHAPES)
         self.shape.setCurrentText(scene.get('border_shape', 'Follow crop'))
-        self.width = QSpinBox()
+        self.width = NumberSlider()
         self.width.setRange(0, 100)
         self.width.setValue(scene['border'] or 8)
-        self.radius = QSpinBox()
-        self.radius.setRange(0, 2048)
+        self.radius = NumberSlider()
+        self.radius.setRange(0, min(scene['size']) // 2)
         self.radius.setValue(scene.get('border_radius', 32))
         for label, widget in [('Shape', self.shape), ('Thickness (px)', self.width), ('Radius (px)', self.radius)]:
-            row.addWidget(QLabel(label))
-            row.addWidget(widget)
+            row.addRow(label, widget)
         layout.addLayout(row)
         self.styles = QListWidget()
         self.styles.setViewMode(QListWidget.ViewMode.IconMode)

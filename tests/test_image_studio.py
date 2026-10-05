@@ -317,7 +317,7 @@ class ImageStudioTests(unittest.TestCase):
         studio.shape.setCurrentText('Circle')
         self.assertTrue(studio.border_radius.isEnabled())
         studio.border_radius.setValue(0)
-        self.assertEqual(studio.shape.currentText(), 'Rounded rectangle')
+        self.assertEqual(studio.shape.currentText(), 'Rectangle')
         self.assertEqual(render_scene(studio.scene).pixelColor(8, 8).alpha(), 255)
         studio.undo()
         self.assertEqual(studio.shape.currentText(), 'Circle')
@@ -382,3 +382,26 @@ class ImageStudioTests(unittest.TestCase):
         studio.undo()
         self.assertEqual(studio.scene, before)
         self.assertEqual(self.source.read_bytes(), self.original)
+
+    def test_number_sliders_replace_fields_and_radius_controls_crop_without_border(self):
+        from playlite_plugins.iconstudio.number_slider import NumberSlider
+        from PyQt6.QtWidgets import QSpinBox
+        studio = self.studio()
+        self.assertTrue(studio.shape.isHidden())
+        self.assertFalse(studio.findChildren(QSpinBox))
+        self.assertIsInstance(studio.width_control, NumberSlider)
+        studio.border_shape.setCurrentText('None')
+        self.assertTrue(studio.border_radius.isEnabled())
+        studio.border_radius.setValue(128)
+        self.assertEqual(render_scene(studio.scene).pixelColor(8, 8).alpha(), 0)
+        studio.border_radius.setValue(0)
+        self.assertEqual(render_scene(studio.scene).pixelColor(8, 8).alpha(), 255)
+        self.assertEqual(studio.border_radius.label.text(), '0')
+        studio.begin_slider_drag()
+        count = len(studio.undo_states)
+        for value in (20, 40, 60):
+            studio.border_radius.setValue(value)
+        studio.end_slider_drag()
+        self.assertEqual(len(studio.undo_states), count)
+        studio.undo()
+        self.assertEqual(studio.border_radius.value(), 0)

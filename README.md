@@ -20,9 +20,10 @@ Playnite Icon Studio: Silver, Gold, Dark metal, Solid colour, and None, with the
 same diagonal metallic gradients and black rim. These are vector presets and
 remain sharp at any export size. Choose… opens a visual border picker showing
 each style on your current composition. Adjust shape, thickness, and radius there;
-Apply commits the selection in one undo step, and Cancel leaves it unchanged. Borders can also follow the crop. Border radius (px) is available for every active border. Changing it converts
-circles and squares to adjustable rounded shapes; Follow crop updates the crop
-itself. Zero gives square corners, and larger values round them.
+Apply commits the selection in one undo step, and Cancel leaves it unchanged. Borders can also follow the crop. Corner radius replaces the crop-shape selector: zero gives square corners,
+maximum rounds a square canvas into a circle, and intermediate values round its
+corners. It also works with no border. Numeric controls use sliders with visible
+values; dragging a slider is a single undo step.
 Transparent outside border removes exterior pixels from the source image and
 background. Image and text overlays are drawn above the frame and can extend
 beyond it, up to the output canvas edges.
