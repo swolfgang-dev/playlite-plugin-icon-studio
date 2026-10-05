@@ -7,5 +7,6 @@
   "enabled": false,
   "repository": "swolfgang-dev/playlite-plugin-icon-studio",
   "minimum_playlite_version": "0.2.0",
-  "description": "Create and edit game icons. Disabled by default."
+  "description": "Create and edit game icons. Disabled by default.",
+  "distribution_repository": "swolfgang-dev/playlite-plugin-icon-studio-releases"
 }
