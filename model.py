@@ -33,10 +33,11 @@ def render_scene(scene, width=None, height=None):
     else:
         clip.addRect(rect)
     border_path = None
+    has_border_shape = scene.get('border_shape') != 'None'
     style = scene.get('border_style', 'Solid colour')
-    border_width = scene['border'] * width / output_width if style != 'None' else 0
+    border_width = scene['border'] * width / output_width if has_border_shape and style != 'None' else 0
     rim_width = border_width + 3 * width / output_width if border_width else 0
-    if scene['border'] or scene.get('transparent_outside'):
+    if has_border_shape and (scene['border'] or scene.get('transparent_outside')):
         thickness = min(rim_width, min(width, height))
         inset = thickness / 2
         border_rect = rect.adjusted(inset, inset, -inset, -inset)

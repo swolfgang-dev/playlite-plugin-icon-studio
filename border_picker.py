@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBo
 from .model import render_scene
 
 STYLES = ('Silver', 'Gold', 'Dark metal', 'Solid colour', 'None')
-SHAPES = ('Follow crop', 'Circle', 'Square', 'Rounded square')
+SHAPES = ('None', 'Follow crop', 'Circle', 'Square', 'Rounded square')
 
 
 class BorderPicker(QDialog):

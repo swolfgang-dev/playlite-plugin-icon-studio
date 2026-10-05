@@ -138,7 +138,7 @@ class ImageStudio(QDialog):
         colors.addWidget(clear)
         form.addRow(colors)
         self.border_shape = QComboBox()
-        self.border_shape.addItems(['Follow crop', 'Circle', 'Square', 'Rounded square'])
+        self.border_shape.addItems(['None', 'Follow crop', 'Circle', 'Square', 'Rounded square'])
         self.border_shape.currentTextChanged.connect(self.set_border_shape)
         form.addRow('Stock border', self.border_shape)
         self.border_style = QComboBox()
@@ -326,7 +326,7 @@ class ImageStudio(QDialog):
             return
         self.remember()
         self.scene['border_shape'] = shape
-        if shape != 'Follow crop' and not self.scene['border']:
+        if shape not in ('None', 'Follow crop') and not self.scene['border']:
             self.scene['border'] = 8
         self.sync_scene()
         self.render()
@@ -361,9 +361,12 @@ class ImageStudio(QDialog):
         self.border_shape.setCurrentText(self.scene.get('border_shape', 'Follow crop'))
         self.border_style.setCurrentText(self.scene.get('border_style', 'Solid colour'))
         self.border.setValue(self.scene['border'])
-        self.border.setEnabled(self.scene.get('border_style') != 'None')
-        self.border_color_button.setEnabled(self.scene.get('border_style') == 'Solid colour')
+        has_shape = self.scene.get('border_shape') != 'None'
+        self.border_style.setEnabled(has_shape)
+        self.border.setEnabled(has_shape and self.scene.get('border_style') != 'None')
+        self.border_color_button.setEnabled(has_shape and self.scene.get('border_style') == 'Solid colour')
         self.border_radius.setValue(self.scene.get('border_radius', 32))
+        self.transparent_outside.setEnabled(has_shape)
         self.transparent_outside.setChecked(self.scene.get('transparent_outside', False))
         rounded = self.scene.get('border_shape') == 'Rounded square' or (self.scene.get('border_shape') == 'Follow crop' and self.scene['shape'] == 'Rounded rectangle')
         self.border_radius.setEnabled(rounded)

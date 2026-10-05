@@ -285,3 +285,20 @@ class ImageStudioTests(unittest.TestCase):
             if button.parentWidget() is content:
                 self.assertLessEqual(button.geometry().right(), content.width(), button.text())
         self.assertGreaterEqual(studio.border_picker_button.width(), studio.border_picker_button.minimumSizeHint().width())
+
+    def test_stock_border_none_removes_frame_and_outside_mask(self):
+        studio = self.studio()
+        studio.border_shape.setCurrentText('Circle')
+        studio.transparent_outside.setChecked(True)
+        studio.border_style.setCurrentText('Gold')
+        self.assertEqual(render_scene(studio.scene).pixelColor(0, 0).alpha(), 0)
+        studio.border_shape.setCurrentText('None')
+        result = render_scene(studio.scene)
+        self.assertEqual(result.pixelColor(0, 0).alpha(), 255)
+        self.assertEqual(result.pixelColor(128, 5).green(), 0)
+        self.assertFalse(studio.border.isEnabled())
+        self.assertFalse(studio.transparent_outside.isEnabled())
+        studio.undo()
+        self.assertEqual(studio.border_shape.currentText(), 'Circle')
+        self.assertEqual(studio.border_style.currentText(), 'Gold')
+        self.assertEqual(render_scene(studio.scene).pixelColor(0, 0).alpha(), 0)
