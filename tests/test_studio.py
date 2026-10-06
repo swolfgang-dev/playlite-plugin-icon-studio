@@ -1,11 +1,11 @@
 from plugin_test_support import require_plugin
-require_plugin('IconStudio')
+require_plugin('ImageStudio')
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 from PyQt6.QtGui import QImage, QColor
 from PyQt6.QtWidgets import QApplication
-from playlite_plugins.iconstudio.studio import IconStudio
+from playlite_plugins.imagestudio.studio import IconStudio
 
 APP = QApplication.instance() or QApplication([])
 

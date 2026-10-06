@@ -1,5 +1,5 @@
 from plugin_test_support import require_plugin
-PLUGIN = require_plugin('IconStudio')
+PLUGIN = require_plugin('ImageStudio')
 import importlib
 import json
 from pathlib import Path
@@ -11,8 +11,8 @@ from PyQt6.QtGui import QImage, QColor, QPainter
 from PyQt6.QtWidgets import QApplication, QDialog, QPushButton
 from PyQt6.QtTest import QTest
 from playlite.editor import MetadataEditor
-from playlite_plugins.iconstudio.studio import ImageStudio
-from playlite_plugins.iconstudio.model import PRESETS, image_layer, render_scene
+from playlite_plugins.imagestudio.studio import ImageStudio
+from playlite_plugins.imagestudio.model import PRESETS, image_layer, render_scene
 
 APP = QApplication.instance() or QApplication([])
 
@@ -133,7 +133,7 @@ class ImageStudioTests(unittest.TestCase):
 
     def test_text_overlay_and_custom_crop(self):
         studio = self.studio()
-        with patch('playlite_plugins.iconstudio.studio.QInputDialog.getText', return_value=('Example', True)):
+        with patch('playlite_plugins.imagestudio.studio.QInputDialog.getText', return_value=('Example', True)):
             studio.add_text()
         self.assertEqual(studio.layer()['text'], 'Example')
         self.assertIsNone(studio.layer()['image'])
@@ -162,7 +162,7 @@ class ImageStudioTests(unittest.TestCase):
         self.assertEqual(set(editor.media_cards), set(PRESETS))
         for key, card in editor.media_cards.items():
             self.assertEqual(len(card.findChildren(QPushButton, 'imageStudio' + key)), 1)
-        plugin = require_plugin('IconStudio')
+        plugin = require_plugin('ImageStudio')
         module = importlib.import_module(plugin.__class__.__module__)
         with patch.object(plugin, 'pick_image', return_value=str(self.source)), patch.object(module, 'run_dialog', return_value=QDialog.DialogCode.Rejected):
             plugin.open_studio(editor, 'HeaderImage')
@@ -172,7 +172,7 @@ class ImageStudioTests(unittest.TestCase):
     def test_apply_updates_only_target_image_and_keeps_output_until_game_save(self):
         editor = MetadataEditor(dict(Id='test', Name='Example'), self.root)
         self.addCleanup(editor.reject)
-        plugin = require_plugin('IconStudio')
+        plugin = require_plugin('ImageStudio')
         module = importlib.import_module(plugin.__class__.__module__)
         def apply(dialog):
             dialog.save()
@@ -190,7 +190,7 @@ class ImageStudioTests(unittest.TestCase):
         editor = MetadataEditor(dict(Id='test', Name='Old name'), self.root)
         self.addCleanup(editor.reject)
         editor.fields['Name'].setText('Updated name')
-        plugin = require_plugin('IconStudio')
+        plugin = require_plugin('ImageStudio')
         module = importlib.import_module(plugin.__class__.__module__)
         def pick(dialog):
             self.assertEqual(dialog.active_key, 'BackgroundImage')
@@ -207,7 +207,7 @@ class ImageStudioTests(unittest.TestCase):
     def test_overlay_picker_defaults_to_logos(self):
         editor = MetadataEditor(dict(Id='test', Name='Example'), self.root)
         self.addCleanup(editor.reject)
-        plugin = require_plugin('IconStudio')
+        plugin = require_plugin('ImageStudio')
         module = importlib.import_module(plugin.__class__.__module__)
         def pick(dialog):
             self.assertEqual(dialog.active_key, 'Logo')
@@ -236,7 +236,7 @@ class ImageStudioTests(unittest.TestCase):
         self.assertEqual(render_scene(studio.scene).pixelColor(0, 0).alpha(), 255)
 
     def test_border_rotation_rotates_frame_and_trim_without_rotating_image(self):
-        from playlite_plugins.iconstudio.border_picker import BorderPicker
+        from playlite_plugins.imagestudio.border_picker import BorderPicker
         studio = self.studio()
         studio.border_shape.setCurrentText('Square')
         studio.border_size.setValue(50)
@@ -259,7 +259,7 @@ class ImageStudioTests(unittest.TestCase):
         self.assertEqual(render_scene(studio.scene), before)
 
     def test_border_patterns_finishes_and_relevant_controls(self):
-        from playlite_plugins.iconstudio.borders import PATTERNS
+        from playlite_plugins.imagestudio.borders import PATTERNS
         studio = self.studio()
         studio.border_shape.setCurrentText('Square')
         studio.border_size.setValue(70)
@@ -294,7 +294,7 @@ class ImageStudioTests(unittest.TestCase):
         self.assertEqual(before, render_scene(studio.scene))
 
     def test_named_border_presets_persist_apply_undo_and_delete(self):
-        from playlite_plugins.iconstudio.presets import load_presets
+        from playlite_plugins.imagestudio.presets import load_presets
         from PyQt6.QtWidgets import QInputDialog, QMessageBox
         studio = self.studio()
         studio.border_shape.setCurrentText('Rounded square')
@@ -368,7 +368,7 @@ class ImageStudioTests(unittest.TestCase):
         self.assertTrue(studio.border.isEnabled())
 
     def test_border_picker_previews_cancel_and_apply_as_one_undo_step(self):
-        from playlite_plugins.iconstudio.border_picker import BorderPicker, STYLES
+        from playlite_plugins.imagestudio.border_picker import BorderPicker, STYLES
         studio = self.studio()
         before = studio.snapshot()
         module = importlib.import_module(ImageStudio.__module__)
@@ -479,7 +479,7 @@ class ImageStudioTests(unittest.TestCase):
         editor = MetadataEditor(dict(Id='test', Name='Example'), self.root)
         self.addCleanup(editor.reject)
         editor.media['HeaderImage'].setText(str(self.source))
-        plugin = require_plugin('IconStudio')
+        plugin = require_plugin('ImageStudio')
         module = importlib.import_module(plugin.__class__.__module__)
         def inspect(studio):
             self.assertEqual(studio.image_type, 'HeaderImage')
@@ -516,7 +516,7 @@ class ImageStudioTests(unittest.TestCase):
         self.assertEqual(self.source.read_bytes(), self.original)
 
     def test_number_sliders_replace_fields_and_radius_controls_crop_without_border(self):
-        from playlite_plugins.iconstudio.number_slider import NumberSlider
+        from playlite_plugins.imagestudio.number_slider import NumberSlider
         from PyQt6.QtWidgets import QSpinBox
         studio = self.studio()
         self.assertTrue(studio.shape.isHidden())

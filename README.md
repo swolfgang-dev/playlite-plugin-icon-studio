@@ -1,7 +1,7 @@
 # Image Studio for Playlite
 
 Edit icons, covers, headers, and backgrounds from the Images page in Add Game or
-Edit Game. Requires Playlite 0.2.40 or later, plugin API 1.
+Edit Game. Requires Playlite 0.2.41 or later, plugin API 1.
 
 The pencil button beside each image's existing controls opens Image Studio directly
 on that image. Empty image fields start with a transparent canvas. Download image…
@@ -43,8 +43,7 @@ original downloaded/local image files are never overwritten. Output is limited
 to 4096 pixels per dimension. Projects/layers are kept for the editing session;
 reopening an applied image starts from the flattened PNG.
 
-Install/update via Settings → Plugins. The existing IconStudio plugin ID
-is retained for compatible updates; the displayed name is now
+Install/update via Settings → Plugins. The plugin ID is `ImageStudio`, matching the displayed name
 Image Studio. New installations are enabled by default; existing enable/disable
 choices are preserved. Right-click the installed plugin to enable it, then restart
 Playlite if needed.
