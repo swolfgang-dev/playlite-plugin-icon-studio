@@ -4,7 +4,7 @@ from pathlib import Path
 from PyQt6.QtCore import Qt, QRectF, pyqtSignal
 from PyQt6.QtGui import QImage, QPainter, QColor, QPen
 from PyQt6.QtWidgets import (QDialog, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QSizePolicy, QGroupBox, QCheckBox, QLabel, QComboBox, QPushButton, QDialogButtonBox, QListWidget,
+    QSizePolicy, QGroupBox, QCheckBox, QLabel, QComboBox, QPushButton, QDialogButtonBox, QToolButton, QListWidget,
     QListWidgetItem, QLineEdit, QColorDialog, QInputDialog, QScrollArea, QMessageBox)
 from playlite.lifecycle import choose_file, run_dialog
 from .model import PRESETS, image_layer, render_scene
@@ -122,9 +122,24 @@ class ImageStudio(QDialog):
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         body.addWidget(scroll)
         def section(title):
-            group = QGroupBox(title)
-            box = QVBoxLayout(group)
-            box.setSpacing(10)
+            group = QGroupBox()
+            group.setAccessibleName(title)
+            outer = QVBoxLayout(group)
+            toggle = QToolButton()
+            toggle.setText(title)
+            toggle.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+            toggle.setArrowType(Qt.ArrowType.DownArrow)
+            toggle.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Fixed)
+            toggle.setCheckable(True)
+            toggle.setChecked(True)
+            outer.addWidget(toggle)
+            body = QWidget()
+            box = QVBoxLayout(body)
+            box.setContentsMargins(0, 0, 0, 0)
+            box.setSpacing(12)
+            outer.addWidget(body)
+            toggle.toggled.connect(body.setVisible)
+            toggle.toggled.connect(lambda expanded: toggle.setArrowType(Qt.ArrowType.DownArrow if expanded else Qt.ArrowType.RightArrow))
             controls.addWidget(group)
             return group, box
 
@@ -330,6 +345,8 @@ class ImageStudio(QDialog):
         self.error.setWordWrap(True)
         layout.addWidget(self.error)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Apply | QDialogButtonBox.StandardButton.Cancel)
+        buttons.button(QDialogButtonBox.StandardButton.Apply).setText('Use image')
+        buttons.button(QDialogButtonBox.StandardButton.Apply).setProperty('primary',True)
         buttons.button(QDialogButtonBox.StandardButton.Apply).clicked.connect(self.save)
         buttons.rejected.connect(self.reject)
         buttons.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)

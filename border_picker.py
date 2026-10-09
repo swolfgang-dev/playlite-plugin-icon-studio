@@ -1,7 +1,7 @@
 """Preview vector border presets on the current composition before applying."""
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import QSize
 from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor
-from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
+from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QComboBox,
                             QFormLayout, QListWidget, QListWidgetItem, QDialogButtonBox)
 from .model import render_scene
 from .number_slider import NumberSlider

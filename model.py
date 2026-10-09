@@ -1,6 +1,6 @@
 """Image Studio's non-destructive composition and PNG rendering."""
 from PyQt6.QtCore import Qt, QRectF
-from PyQt6.QtGui import QImage, QPainter, QPainterPath, QColor, QPen, QFont, QFontMetricsF, QTransform
+from PyQt6.QtGui import QImage, QPainter, QPainterPath, QColor, QFont, QFontMetricsF, QTransform
 
 from .borders import draw_border
 
